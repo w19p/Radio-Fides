@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">Radio Fides</string>
+    <string name="top_bar_title">RADIO FIDES</string>
+    <string name="eslogan">La voz que camina con el pueblo</string>
+    <string name="label_en_directo">EN DIRECTO</string>
+    <string name="action_reproducir">Reproducir</string>
+    <string name="action_pausar">Pausar</string>
+    <string name="action_compartir">Compartir la aplicación</string>
+    <string name="desc_logo_fides">Logo oficial de Radio Fides</string>
 </resources>

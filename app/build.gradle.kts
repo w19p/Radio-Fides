@@ -55,4 +55,21 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // --- JETPACK COMPOSE (Interfaz Moderna) ---
+    val compose_version = "1.7.0" // O la más reciente de 2026
+    implementation("androidx.compose.ui:ui:$compose_version")
+    implementation("androidx.compose.material3:material3:1.3.0") // Material 3 es vital
+    implementation("androidx.navigation:navigation-compose:2.8.0")
+
+    // --- MEDIA3 EXOPLAYER (El corazón de la radio) ---
+    // Esta librería reemplaza al viejo MediaPlayer
+    val media3_version = "1.4.0"
+    implementation("androidx.media3:media3-exoplayer:$media3_version")
+    implementation("androidx.media3:media3-session:$media3_version") // Para control en pantalla de bloqueo
+    implementation("androidx.media3:media3-ui:$media3_version")
+
+    // --- HILT (Inyección de dependencias para orden profesional) ---
+    implementation("com.google.dagger:hilt-android:2.51")
+    //kapt("com.google.dagger:hilt-compiler:2.51")
 }
