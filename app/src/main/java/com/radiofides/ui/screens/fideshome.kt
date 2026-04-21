@@ -169,21 +169,16 @@ fun FidesHome(viewModel: FidesViewModel = viewModel()) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // SUSTITUCIÓN DEL SLIDER POR BARRA DE PROGRESO INDETERMINADA
-                if (isPlaying) {
-                    LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                } else {
-                    // Barra estática si no está reproduciendo
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(6.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                    )
-                }
-
+                Text(
+                    text = viewModel.currentTitle,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Text(
+                    text = viewModel.currentArtist,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
                 Spacer(modifier = Modifier.height(30.dp))
 
                 // Botón de Play Principal
@@ -204,6 +199,7 @@ fun FidesHome(viewModel: FidesViewModel = viewModel()) {
                     )
                 }
             }
+
         }
     }
 }
