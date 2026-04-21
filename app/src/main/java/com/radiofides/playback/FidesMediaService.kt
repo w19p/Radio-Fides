@@ -45,6 +45,11 @@ class FidesMediaService : MediaSessionService() {
                     .build()
             )
             .build()
+        player.addListener(object : Player.Listener {
+            override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+                mediaSession?.setPlayer(player) // Refresca la sesión cuando cambian los textos
+            }
+        })
 
         // Metadatos vacíos iniciales para evitar que la notificación parpadee al inicio
         val defaultMetadata = MediaMetadata.Builder()

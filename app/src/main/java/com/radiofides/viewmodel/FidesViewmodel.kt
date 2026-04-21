@@ -31,14 +31,23 @@ import com.radiofides.R
 @OptIn(UnstableApi::class)
 class FidesViewModel(application: Application) : AndroidViewModel(application) {
 
+    // El "browser" es nuestro puente con el FidesMediaService
     private var browser: MediaController? = null
+
+    // Estado de reproducción observable por la UI de Compose
     var isPlaying by mutableStateOf(false)
 
+    // Variables de estado para la pantalla (Título, Artista e Imagen)
     var currentTitle by mutableStateOf("Radio Fides")
     var currentArtist by mutableStateOf("La voz que camina con el pueblo")
     var currentImageUrl by mutableStateOf<String?>(null)
 
+    // Nuevo estado para el loading
+
+    var isBuffering by mutableStateOf(false) // Nuevo estado para el loading
+
     init {
+        // Conexión inicial al servicio de Media3
         val sessionToken = SessionToken(
             application,
             ComponentName(application, FidesMediaService::class.java)
@@ -47,49 +56,65 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
 
         controllerFuture.addListener({
             try {
+                // Obtenemos el controlador una vez que la conexión es exitosa
                 browser = controllerFuture.get()
+
+                // Escuchamos cambios en el estado del reproductor (Play/Pause externo)
                 browser?.addListener(object : Player.Listener {
                     override fun onIsPlayingChanged(playing: Boolean) {
                         isPlaying = playing
                     }
+
+                    // ESTO DETECTA SI ESTÁ CARGANDO
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        isBuffering = (playbackState == Player.STATE_BUFFERING)
+                    }
                 })
-                // Intentar una carga inicial apenas se conecte el controlador
+
+                // Pedimos los datos de la canción inmediatamente al conectar
                 fetchMetadata()
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("FidesVM", "Error al conectar MediaController: ${e.message}")
             }
         }, MoreExecutors.directExecutor())
 
+        // Iniciamos el ciclo de actualización de datos cada 30 segundos
         startMetadataRefresh()
     }
 
+    /**
+     * Lógica de Play/Pause optimizada para Radio en Vivo.
+     * Si se pausa y se vuelve a dar Play, salta al "ahora" (Live).
+     */
     fun togglePlayPause() {
         browser?.let { controller ->
             if (isPlaying) {
-                // Si está sonando, simplemente pausamos
                 controller.pause()
             } else {
-                // Si estaba pausado, antes de darle Play, lo sincronizamos al presente
-                // 1. Buscamos la posición por defecto (la punta del vivo)
+                // Sincronización con el presente (punta del stream)
                 controller.seekToDefaultPosition()
-
-                // 2. Preparamos por si el stream se quedó "dormido" por la pausa
-                controller.prepare()
-
-                // 3. Ahora sí, Play
+                controller.prepare() // Asegura que el stream esté listo tras una pausa larga
                 controller.play()
             }
         }
     }
 
+    /**
+     * Cierre total de la aplicación enviando el comando ACTION_EXIT al servicio.
+     */
     fun exitApp() {
         val intent = Intent(getApplication(), FidesMediaService::class.java).apply {
             action = "ACTION_EXIT"
         }
         getApplication<Application>().startService(intent)
+        // Matamos el proceso para asegurar una limpieza total de memoria
         android.os.Process.killProcess(android.os.Process.myPid())
     }
 
+    /**
+     * Consulta la API externa para obtener la canción actual.
+     * Se ejecuta en un hilo secundario (IO) para no congelar la pantalla.
+     */
     private fun fetchMetadata() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -106,51 +131,58 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     val artist = current.getString("track_artist")
                     val image = current.optString("track_image", null)
 
+                    // Cambiamos al hilo principal para actualizar la UI y el Servicio
                     withContext(Dispatchers.Main) {
                         currentTitle = title
                         currentArtist = artist
                         currentImageUrl = image
 
                         browser?.let { controller ->
-                            // 1. Creamos la "información visual" con lo que llegó del JSON
-                            val logoUri =
-                                "android.resource://${getApplication<Application>().packageName}/${R.drawable.logo_fides_oficial}".toUri()
+                            val logoUri = Uri.parse("android.resource://${getApplication<Application>().packageName}/${R.drawable.logo_fides_oficial}")
 
                             val infoVisual = MediaMetadata.Builder()
                                 .setTitle(title)
                                 .setArtist(artist)
-                                .setArtworkUri(if (!image.isNullOrEmpty()) image.toUri() else logoUri)
+                                .setArtworkUri(if (!image.isNullOrEmpty()) Uri.parse(image) else logoUri)
                                 .build()
 
-                            // 2. FORZAMOS el refresco de la barra superior
-                            // Esto le dice al servicio: "El stream sigue siendo el mismo, pero su información cambió"
-                            val itemActualizado = controller.currentMediaItem?.buildUpon()
-                                ?.setMediaMetadata(infoVisual)
-                                ?.build()
+                            // 1. Actualizamos la metadata de la playlist (Para el sistema)
+                            controller.setPlaylistMetadata(infoVisual)
 
-                            if (itemActualizado != null) {
-                                // Reemplazamos el item en la posición 0 (el actual) sin detener el audio
-                                controller.replaceMediaItem(0, itemActualizado)
+                            // 2. ACTUALIZACIÓN DINÁMICA: Editamos el item que está sonando ahora mismo
+                            // Esto no detiene el audio y obliga a la notificación a refrescarse.
+                            controller.currentMediaItem?.let { item ->
+                                val itemEditado = item.buildUpon()
+                                    .setMediaMetadata(infoVisual)
+                                    .build()
+
+                                // Usamos setMediaItem con 'false' para que NO reinicie la reproducción
+                                controller.setMediaItem(itemEditado, false)
                             }
                         }
                     }
-
                 }
             } catch (e: Exception) {
-                Log.e("FidesVM", "Error al obtener datos: ${e.message}")
+                Log.e("FidesVM", "Error en fetchMetadata: ${e.message}")
             }
         }
     }
 
+    /**
+     * Bucle infinito que refresca los datos cada 30 segundos.
+     */
     fun startMetadataRefresh() {
         viewModelScope.launch {
             while (true) {
-                delay(30000)
                 fetchMetadata()
+                delay(30000) // 30 segundos entre actualizaciones
             }
         }
     }
 
+    /**
+     * Limpieza de recursos cuando el ViewModel se destruye.
+     */
     override fun onCleared() {
         super.onCleared()
         browser?.release()
