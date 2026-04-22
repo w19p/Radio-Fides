@@ -278,32 +278,33 @@ fun FidesHome(viewModel: FidesViewModel = viewModel()) {
                     Surface(
                         modifier = Modifier.size(90.dp),
                         shape = CircleShape,
-                        // Si está cargando, usamos un color neutro, si no, los que ya tenías
-                        color = when {
-                            viewModel.isBuffering -> MaterialTheme.colorScheme.secondaryContainer
-                            isPlaying -> MaterialTheme.colorScheme.errorContainer
-                            else -> MaterialTheme.colorScheme.primaryContainer
-                        },
+                        // Si está cargando, ponemos un color más suave
+                        color = if (viewModel.isBuffering) MaterialTheme.colorScheme.surfaceVariant
+                        else if (isPlaying) MaterialTheme.colorScheme.errorContainer
+                        else MaterialTheme.colorScheme.primaryContainer,
                         tonalElevation = 8.dp,
-                        onClick = { if (!viewModel.isBuffering) viewModel.togglePlayPause() }
+                        onClick = { viewModel.togglePlayPause() }
                     ) {
                         Box(contentAlignment = Alignment.Center) {
+                            // Capa 1: El Icono de siempre
+                            Icon(
+                                painter = painterResource(
+                                    id = if (isPlaying) R.drawable.ic_stop else R.drawable.ic_play
+                                ),
+                                contentDescription = null,
+                                modifier = Modifier.padding(24.dp),
+                                // Si carga, el icono se pone transparente para que se vea el círculo
+                                tint = if (viewModel.isBuffering) Color.Transparent
+                                else if (isPlaying) MaterialTheme.colorScheme.onErrorContainer
+                                else MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+
+                            // Capa 2: El Círculo de carga (Solo aparece si isBuffering es true)
                             if (viewModel.isBuffering) {
-                                // SÍMBOLO DE CARGA (CircularProgressIndicator)
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(45.dp),
                                     color = MaterialTheme.colorScheme.primary,
                                     strokeWidth = 4.dp
-                                )
-                            } else {
-                                // ICONOS NORMALES (Play/Stop)
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (isPlaying) R.drawable.ic_stop else R.drawable.ic_play
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(24.dp),
-                                    tint = if (isPlaying) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                         }
