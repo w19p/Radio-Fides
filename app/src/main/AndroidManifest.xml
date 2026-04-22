@@ -27,7 +27,7 @@
             </intent-filter>
         </activity>
         <service
-            android:name=".playback.FidesMediaService"
+            android:name=".service.FidesMediaService"
             android:foregroundServiceType="mediaPlayback"
             android:exported="false">
             <intent-filter>

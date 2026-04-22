@@ -1,23 +1,24 @@
 package com.radiofides.viewmodel
 
+import android.app.Application
 import android.content.ComponentName
+import android.content.Intent
+import android.net.Uri
+import androidx.annotation.OptIn
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
-import com.radiofides.playback.FidesMediaService
-import android.app.Application
-import android.content.Intent
-import android.net.Uri
-import androidx.annotation.OptIn
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import androidx.media3.common.MediaMetadata
-import androidx.media3.common.util.Log
+import com.radiofides.R
+import com.radiofides.service.FidesMediaService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -25,8 +26,6 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
-import androidx.core.net.toUri
-import com.radiofides.R
 
 @OptIn(UnstableApi::class)
 class FidesViewModel(application: Application) : AndroidViewModel(application) {
@@ -88,13 +87,21 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun togglePlayPause() {
         browser?.let { controller ->
-            if (isPlaying) {
-                controller.pause()
-            } else {
-                // Sincronización con el presente (punta del stream)
-                controller.seekToDefaultPosition()
-                controller.prepare() // Asegura que el stream esté listo tras una pausa larga
-                controller.play()
+            try {
+                if (isPlaying) {
+                    controller.pause()
+                } else {
+                    // VERIFICACIÓN DE SEGURIDAD:
+                    // Si el reproductor se quedó sin nada (IDLE) o terminó (ENDED),
+                    // debemos prepararlo antes de darle Play.
+                    if (controller.playbackState == Player.STATE_IDLE) {
+                        controller.prepare()
+                    }
+
+                    controller.play()
+                }
+            } catch (e: Exception) {
+                Log.e("FidesVM", "Error al presionar Play: ${e.message}")
             }
         }
     }

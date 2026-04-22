@@ -73,4 +73,7 @@ dependencies {
     implementation("com.google.dagger:hilt-android:2.51")
     //kapt("com.google.dagger:hilt-compiler:2.51")
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    // jetpack compose navigation
+    implementation("androidx.navigation:navigation-compose:2.8.0")
 }
