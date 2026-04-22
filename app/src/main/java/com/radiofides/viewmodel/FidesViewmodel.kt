@@ -87,15 +87,25 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                 // Si ya suena, pausa simple
                 controller.pause()
             } else {
-                // Al reanudar, forzamos que vaya al "tiempo real" (punta del vivo)
-                // 1. Salta a la posición más actual del stream
+                // --- FORZAR RE-CONEXIÓN LIMPIA DEL STREAM ---
+
+                // 1. Obtenemos el item actual (que tiene la URL del stream)
+                controller.currentMediaItem?.let { item ->
+                    // 2. Lo volvemos a asignar. Esto obliga a ExoPlayer a vaciar sus buffers
+                    // y cerrar la conexión anterior para abrir una nueva.
+                    controller.setMediaItem(item)
+                }
+
+                // 3. Salta a la posición más actual del stream (Punta del vivo)
                 controller.seekToDefaultPosition()
 
-                // 2. Reconecta el stream si se perdió la conexión
+                // 4. Prepara el motor con la nueva conexión
                 controller.prepare()
 
-                // 3. Inicia la reproducción
+                // 5. Inicia la reproducción
                 controller.play()
+
+                android.util.Log.d("FidesDEBUG", "Stream reiniciado: Conectando al vivo y limpiando buffer.")
             }
         }
     }
@@ -103,13 +113,24 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     /**
      * Cierra la aplicación por completo enviando un comando al servicio
      */
-    fun exitApp() {
+    fun exitApp() {        // Detenemos el servicio de raíz
         val intent = Intent(getApplication(), FidesMediaService::class.java).apply {
             action = "ACTION_EXIT"
         }
         getApplication<Application>().startService(intent)
-        // Mata el proceso de la app para que no quede nada en memoria
-        android.os.Process.killProcess(android.os.Process.myPid())
+
+        // Salimos al home del teléfono (minimiza todo)
+        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_HOME)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        getApplication<Application>().startActivity(homeIntent)
+
+        // Matamos el proceso después de un instante
+        viewModelScope.launch {
+            delay(500)
+            android.os.Process.killProcess(android.os.Process.myPid())
+        }
     }
 
     /**

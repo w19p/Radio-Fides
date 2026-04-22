@@ -106,6 +106,14 @@ class FidesMediaService : MediaSessionService() {
             .build()
     }
 
+    // Escucha intents para cerrar la aplicación
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == "ACTION_EXIT") {
+            exitEverything()
+        }
+        return super.onStartCommand(intent, flags, startId)
+    }
+
     // Gestiona cómo se comporta la notificación cuando hay actualizaciones
     override fun onUpdateNotification(session: MediaSession, startInForegroundRequired: Boolean) {
         super.onUpdateNotification(session, startInForegroundRequired)
@@ -146,4 +154,3 @@ class FidesMediaService : MediaSessionService() {
     // Método obligatorio para que el sistema encuentre la sesión de música
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
 }
-
