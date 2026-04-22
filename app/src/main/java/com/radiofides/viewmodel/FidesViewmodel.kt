@@ -12,7 +12,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
-import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -117,13 +116,19 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
      * Se conecta a la API para obtener título, artista e imagen
      */
     private fun fetchMetadata() {
-        viewModelScope.launch(Dispatchers.IO) { // Se ejecuta en hilo secundario (Internet)
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                val url = URL("https://api.instant.audio/data/playlist/43/radio-chacaltaya")
+                // 1. Forzamos que la URL sea única para saltar cualquier caché de red
+                val url = URL("https://api.instant.audio/data/playlist/43/radio-chacaltaya?t=${System.currentTimeMillis()}")
                 val connection = url.openConnection() as HttpURLConnection
+                connection.useCaches = false
+                connection.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate")
+
                 val jsonText = connection.inputStream.bufferedReader().readText()
 
-                // Procesamos el JSON recibido
+                // --- LOG DE ORO: Si aquí sale el nombre "culpable", es la API la que lo envía ---
+                android.util.Log.d("FidesDEBUG", "API dice: $jsonText")
+
                 val root = JSONObject(jsonText)
                 val results = root.getJSONArray("result")
 
@@ -133,39 +138,39 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     val artist = current.getString("track_artist")
                     val image = current.optString("track_image", null)
 
-                    // Cambiamos al hilo principal para actualizar la pantalla y la notificación
+                    // 2. Todo lo que es UI y Estados, lo hacemos en el Hilo Principal (Main)
                     withContext(Dispatchers.Main) {
-                        currentTitle = title
-                        currentArtist = artist
-                        currentImageUrl = image
-
-                        browser?.let { controller ->
-                            // Imagen por defecto si la API no manda foto
-                            val logoUri =
-                                "android.resource://${getApplication<Application>().packageName}/${R.drawable.logo_fides_oficial}".toUri()
-
-                            // Creamos los metadatos visuales
-                            val infoVisual = MediaMetadata.Builder()
-                                .setTitle(title)
-                                .setArtist(artist)
-                                .setArtworkUri(if (!image.isNullOrEmpty()) image.toUri() else logoUri)
-                                .build()
-
-                            // Actualizamos la notificación del sistema sin detener la música
-                            val itemActualizado = controller.currentMediaItem?.buildUpon()
-                                ?.setMediaMetadata(infoVisual)
-                                ?.build()
-
-                            if (itemActualizado != null) {
-                                // Reemplaza la info actual. 0 es el índice del stream en la lista.
-                                controller.replaceMediaItem(0, itemActualizado)
-                            }
+                        if (title != currentTitle || artist != currentArtist) {
+                            android.util.Log.d("FidesDEBUG", "Cambiando de $currentTitle a $title")
+                            currentTitle = title
+                            currentArtist = artist
+                            currentImageUrl = image
+                            updateMediaSession(title, artist, image)
                         }
                     }
-
                 }
             } catch (e: Exception) {
-                Log.e("FidesVM", "Error al obtener datos: ${e.message}")
+                android.util.Log.e("FidesVM", "Error en fetch: ${e.message}")
+            }
+        }
+    }
+
+    private fun updateMediaSession(title: String, artist: String, image: String?) {
+        browser?.let { controller ->
+            val logoUri = "android.resource://${getApplication<Application>().packageName}/${R.drawable.logo_fides_oficial}".toUri()
+            val metadata = MediaMetadata.Builder()
+                .setTitle(title)
+                .setArtist(artist)
+                .setArtworkUri(if (!image.isNullOrEmpty()) image.toUri() else logoUri)
+                .build()
+
+            // Reemplazamos el item actual para que la notificación se refresque sí o sí
+            val currentItem = controller.currentMediaItem?.buildUpon()
+                ?.setMediaMetadata(metadata)
+                ?.build()
+
+            if (currentItem != null) {
+                controller.replaceMediaItem(0, currentItem)
             }
         }
     }
