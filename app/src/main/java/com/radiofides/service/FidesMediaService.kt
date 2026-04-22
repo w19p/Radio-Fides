@@ -15,6 +15,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.radiofides.R
 
 
 @UnstableApi
@@ -53,7 +54,7 @@ class FidesMediaService : MediaSessionService() {
         val exitCommand = SessionCommand("ACTION_EXIT", Bundle.EMPTY)
         val exitButton = CommandButton.Builder()
             .setDisplayName("Cerrar")
-            .setIconResId(android.R.drawable.ic_menu_close_clear_cancel) // Icono de la X
+            .setIconResId(R.drawable.ic_exit) // Icono de la X
             .setSessionCommand(exitCommand)
             .build()
 

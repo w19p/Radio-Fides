@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CardDefaults
@@ -313,9 +312,16 @@ fun FidesHome(viewModel: FidesViewModel = viewModel()) {
 
                 IconButton(
                     onClick = { viewModel.exitApp() },
-                    modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.error, CircleShape)
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(MaterialTheme.colorScheme.error, CircleShape)
                 ) {
-                    Icon(imageVector = Icons.Default.Close, contentDescription = "Cerrar", tint = MaterialTheme.colorScheme.onError)
+                    Icon(
+                        // Cambiamos 'imageVector' por 'painter'
+                        painter = painterResource(id = R.drawable.ic_exit),
+                        contentDescription = "Cerrar",
+                        tint = MaterialTheme.colorScheme.onError
+                    )
                 }
             }
         }
