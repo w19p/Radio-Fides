@@ -2,6 +2,12 @@ package com.radiofides.viewmodel
 
 import android.app.Application
 import android.content.ComponentName
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,129 +31,148 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
+// --- URL GLOBAL PARA METADATOS ---
+const val METADATA_URL = "https://api.instant.audio/data/playlist/43/radio-chacaltaya"
+
 @OptIn(UnstableApi::class)
 class FidesViewModel(application: Application) : AndroidViewModel(application) {
 
-    // El 'browser' es el control remoto que se conecta al Servicio de audio
     private var browser: MediaController? = null
 
-    // --- NUEVA VARIABLE DE CARGA DE LA RADIO ---
     var isBuffering by mutableStateOf(false)
-
-    // Estados que la UI (Compose) observa para cambiar iconos y textos
     var isPlaying by mutableStateOf(false)
+    
+    // Estados iniciales oficiales de RADIO FIDES
     var currentTitle by mutableStateOf("Radio Fides")
     var currentArtist by mutableStateOf("La voz que camina con el pueblo")
     var currentImageUrl by mutableStateOf<String?>(null)
 
+    var isNetworkAvailable by mutableStateOf(true)
+
+    private val connectivityManager =
+        application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) { isNetworkAvailable = true }
+        override fun onLost(network: Network) { isNetworkAvailable = false }
+    }
+
     init {
-        // Configuramos la conexión con el servicio FidesMediaService
+        checkInitialNetwork()
+        registerNetworkCallback()
+
         val sessionToken = SessionToken(
             application,
             ComponentName(application, FidesMediaService::class.java)
         )
-        // Creamos el controlador de forma asíncrona (para no trabar la app)
         val controllerFuture = MediaController.Builder(application, sessionToken).buildAsync()
 
         controllerFuture.addListener({
             try {
-                // Una vez conectado, guardamos el controlador en 'browser'
                 browser = controllerFuture.get()
 
-                // Escuchamos si el reproductor cambia de estado (Play/Pause) para avisar a la UI
                 browser?.addListener(object : Player.Listener {
                     override fun onIsPlayingChanged(playing: Boolean) {
                         isPlaying = playing
                     }
-                    // --- DETECTA SI ESTÁ CARGANDO ---
                     override fun onPlaybackStateChanged(state: Int) {
-                        // Si el estado es BUFFERING, activamos la carga.
                         isBuffering = (state == Player.STATE_BUFFERING)
                     }
+                    
+                    override fun onMediaMetadataChanged(metadata: MediaMetadata) {
+                        // Solo usamos metadatos del stream si el título actual es el default
+                        if (currentTitle == "Radio Fides") { 
+                            val streamTitle = metadata.title?.toString()
+                            if (!streamTitle.isNullOrEmpty()) {
+                                currentTitle = streamTitle
+                                currentArtist = metadata.artist?.toString() ?: "En vivo"
+                            }
+                        }
+                    }
                 })
-
-                // Pedimos los datos de la canción apenas conectamos
+                
                 fetchMetadata()
+                
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }, MoreExecutors.directExecutor())
 
-        // Iniciamos el ciclo que pide datos cada 30 segundos
         startMetadataRefresh()
     }
 
-    /**
-     * Lógica del botón principal. Maneja la sincronización al vivo.
-     */
-    fun togglePlayPause() {
-        browser?.let { controller ->
-            if (isPlaying) {
-                // Si ya suena, pausa simple
-                controller.pause()
-            } else {
-                // --- FORZAR RE-CONEXIÓN LIMPIA DEL STREAM ---
+    private fun checkInitialNetwork() {
+        val activeNetwork = connectivityManager.activeNetwork
+        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+        isNetworkAvailable = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+    }
 
-                // 1. Obtenemos el item actual (que tiene la URL del stream)
-                controller.currentMediaItem?.let { item ->
-                    // 2. Lo volvemos a asignar. Esto obliga a ExoPlayer a vaciar sus buffers
-                    // y cerrar la conexión anterior para abrir una nueva.
-                    controller.setMediaItem(item)
-                }
-
-                // 3. Salta a la posición más actual del stream (Punta del vivo)
-                controller.seekToDefaultPosition()
-
-                // 4. Prepara el motor con la nueva conexión
-                controller.prepare()
-
-                // 5. Inicia la reproducción
-                controller.play()
-
-                android.util.Log.d("FidesDEBUG", "Stream reiniciado: Conectando al vivo y limpiando buffer.")
-            }
-        }
+    private fun registerNetworkCallback() {
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        connectivityManager.registerNetworkCallback(request, networkCallback)
     }
 
     /**
-     * Se conecta a la API para obtener título, artista e imagen
+     * Obtiene los metadatos y bloquea información que no pertenece a Radio Fides
      */
-    private fun fetchMetadata() {
+    fun fetchMetadata() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // 1. Forzamos que la URL sea única para saltar cualquier caché de red
-                val url = URL("https://api.instant.audio/data/playlist/43/radio-chacaltaya?t=${System.currentTimeMillis()}")
+                val timestamp = System.currentTimeMillis()
+                // Usamos la constante global
+                val url = URL("$METADATA_URL?t=$timestamp")
+                
                 val connection = url.openConnection() as HttpURLConnection
                 connection.useCaches = false
                 connection.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate")
-
+                connection.setRequestProperty("Pragma", "no-cache")
+                
                 val jsonText = connection.inputStream.bufferedReader().readText()
-
-                // --- LOG DE ORO: Si aquí sale el nombre "culpable", es la API la que lo envía ---
-                android.util.Log.d("FidesDEBUG", "API dice: $jsonText")
+                Log.d("FidesMetadata", "Dato del servidor externo: $jsonText")
 
                 val root = JSONObject(jsonText)
-                val results = root.getJSONArray("result")
+                val results = root.optJSONArray("result")
 
-                if (results.length() > 0) {
+                if (results != null && results.length() > 0) {
                     val current = results.getJSONObject(0)
-                    val title = current.getString("track_title")
-                    val artist = current.getString("track_artist")
-                    val image = current.optString("track_image", null)
+                    val title = current.optString("track_title", "Radio Fides")
+                    val artist = current.optString("track_artist", "La voz que camina con el pueblo")
+                    val image = current.optString("track_image", "")
 
-                    // 2. Todo lo que es UI y Estados, lo hacemos en el Hilo Principal (Main)
                     withContext(Dispatchers.Main) {
-                        if (title != currentTitle || artist != currentArtist) {
-                            android.util.Log.d("FidesDEBUG", "Cambiando de $currentTitle a $title")
+                        // --- FILTRO DE SEGURIDAD ANTIBASURA ---
+                        if (title.contains("Bilirrubina", ignoreCase = true) || 
+                            artist.contains("Bomba Estereo", ignoreCase = true)) {
+                            Log.w("FidesMetadata", "Bloqueado dato de otra radio: $title")
+                            currentTitle = "Radio Fides"
+                            currentArtist = "La voz que camina con el pueblo"
+                            currentImageUrl = null
+                            return@withContext
+                        }
+
+                        if (currentTitle != title || currentArtist != artist) {
                             currentTitle = title
                             currentArtist = artist
-                            currentImageUrl = image
-                            updateMediaSession(title, artist, image)
+                            currentImageUrl = if (image.isNotEmpty()) image else null
+                            updateMediaSession(currentTitle, currentArtist, currentImageUrl)
                         }
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("FidesVM", "Error en fetch: ${e.message}")
+                Log.e("FidesVM", "Error fetch: ${e.message}")
+            }
+        }
+    }
+
+    private fun startMetadataRefresh() {
+        viewModelScope.launch {
+            while (true) {
+                delay(20000)
+                if (isNetworkAvailable) {
+                    fetchMetadata()
+                }
             }
         }
     }
@@ -161,7 +186,6 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                 .setArtworkUri(if (!image.isNullOrEmpty()) image.toUri() else logoUri)
                 .build()
 
-            // Reemplazamos el item actual para que la notificación se refresque sí o sí
             val currentItem = controller.currentMediaItem?.buildUpon()
                 ?.setMediaMetadata(metadata)
                 ?.build()
@@ -172,23 +196,41 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Bucle infinito que refresca los datos de la radio cada 30 segundos
-     */
-    fun startMetadataRefresh() {
-        viewModelScope.launch {
-            while (true) {
-                delay(30000) // Espera 30 segundos
-                fetchMetadata()
+    fun togglePlayPause() {
+        browser?.let { controller ->
+            if (isPlaying) {
+                controller.pause()
+            } else {
+                playStream()
             }
         }
     }
 
-    /**
-     * Se ejecuta cuando el ViewModel se destruye: libera el controlador
-     */
+    private fun playStream() {
+        browser?.let { controller ->
+            controller.currentMediaItem?.let { item ->
+                controller.setMediaItem(item)
+            }
+            controller.seekToDefaultPosition()
+            controller.prepare()
+            controller.play()
+        }
+    }
+
+    fun autoPlay() {
+        viewModelScope.launch {
+            while (browser == null) {
+                delay(500)
+            }
+            if (!isPlaying && isNetworkAvailable) {
+                playStream()
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
+        connectivityManager.unregisterNetworkCallback(networkCallback)
         browser?.release()
         browser = null
     }

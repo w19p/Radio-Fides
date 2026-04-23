@@ -14,20 +14,14 @@ fun NavGraph(viewModel: FidesViewModel) {
 
     NavHost(
         navController = navController,
-        startDestination = "welcome" // La pantalla que inicia primero
+        startDestination = "welcome"
     ) {
-        // Ruta de Bienvenida
         composable("welcome") {
-            WelcomeScreen(navController)
+            WelcomeScreen(navController, viewModel)
         }
 
-        // Ruta de la Radio (Tu pantalla actual)
         composable("home") {
-            FidesHome(viewModel)
+            FidesHome(viewModel, navController)
         }
-
-        /* En el futuro puedes añadir más aquí:
-           composable("programacion") { ProgramacionScreen(navController) }
-        */
     }
 }

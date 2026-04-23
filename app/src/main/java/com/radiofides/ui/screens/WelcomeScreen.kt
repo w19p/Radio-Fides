@@ -16,9 +16,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,24 +41,32 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.radiofides.R
+import com.radiofides.viewmodel.FidesViewModel
 import kotlinx.coroutines.delay
 
 @Composable
-fun WelcomeScreen(navController: NavController) {
-    // Controladores de visibilidad para la animación
+fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
     var startLogoAnimation by remember { mutableStateOf(false) }
     var startMessageAnimation by remember { mutableStateOf(false) }
 
-    // Disparamos las animaciones en secuencia
-    LaunchedEffect(Unit) {
-        delay(800) // Pequeña pausa inicial
-        startLogoAnimation = true
-        delay(1000) // Esperamos a que el logo crezca
-        startMessageAnimation = true
+    // Obtenemos el estado de red del ViewModel
+    val isNetworkAvailable = viewModel.isNetworkAvailable
 
-        delay(2000) // Tiempo total de lectura/conexión
-        navController.navigate("home") {
-            popUpTo("welcome") { inclusive = true }
+    LaunchedEffect(Unit) {
+        delay(800)
+        startLogoAnimation = true
+        delay(1000)
+        startMessageAnimation = true
+    }
+
+    // Lógica de navegación condicionada al internet
+    LaunchedEffect(isNetworkAvailable) {
+        if (isNetworkAvailable) {
+            // Esperamos un momento para que el usuario vea la bienvenida antes de saltar
+            delay(3500)
+            navController.navigate("home") {
+                popUpTo("welcome") { inclusive = true }
+            }
         }
     }
 
@@ -63,7 +74,7 @@ fun WelcomeScreen(navController: NavController) {
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient( // Un degradado elegante
+                Brush.verticalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.primary,
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
@@ -76,14 +87,13 @@ fun WelcomeScreen(navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // --- ANIMACIÓN 1: EL LOGO ---
             AnimatedVisibility(
                 visible = startLogoAnimation,
                 enter = scaleIn(animationSpec = tween(700)) + fadeIn()
             ) {
                 ElevatedCard(
                     modifier = Modifier.size(220.dp),
-                    shape = CircleShape, // Logo circular para la bienvenida
+                    shape = CircleShape,
                     elevation = CardDefaults.elevatedCardElevation(20.dp)
                 ) {
                     Box(modifier = Modifier.fillMaxSize().background(Color.White), contentAlignment = Alignment.Center) {
@@ -98,7 +108,6 @@ fun WelcomeScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // --- ANIMACIÓN 2: MENSAJE Y CARGA ---
             AnimatedVisibility(
                 visible = startMessageAnimation,
                 enter = slideInVertically(initialOffsetY = { 40 }) + fadeIn(animationSpec = tween(1000))
@@ -122,19 +131,37 @@ fun WelcomeScreen(navController: NavController) {
 
                     Spacer(modifier = Modifier.height(60.dp))
 
-                    // Indicador de que la app se está "conectando"
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(30.dp),
-                        color = Color.White,
-                        strokeWidth = 3.dp
-                    )
-
-                    Text(
-                        text = "Sintonizando...",
-                        color = Color.White.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(top = 10.dp),
-                        style = MaterialTheme.typography.labelMedium
-                    )
+                    if (isNetworkAvailable) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(30.dp),
+                            color = Color.White,
+                            strokeWidth = 3.dp
+                        )
+                        Text(
+                            text = "Sintonizando...",
+                            color = Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(top = 10.dp),
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = Color.Yellow,
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Text(
+                            text = "Sin conexión a internet",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 10.dp)
+                        )
+                        Text(
+                            text = "Por favor, verifica tu red para continuar",
+                            color = Color.White.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }
