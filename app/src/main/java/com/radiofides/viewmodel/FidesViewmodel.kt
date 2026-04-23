@@ -31,8 +31,11 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-// --- URL GLOBAL PARA METADATOS ---
+// --- CONFIGURACIÓN GLOBAL ---
 const val METADATA_URL = "https://api.instant.audio/data/playlist/43/radio-chacaltaya"
+
+// --- LISTA NEGRA (Añade aquí cualquier palabra o artista que quieras bloquear) ---
+val BLACKLIST = listOf("Bilirrubina", "Bomba Estereo", "Chacaltaya")
 
 @OptIn(UnstableApi::class)
 class FidesViewModel(application: Application) : AndroidViewModel(application) {
@@ -42,7 +45,6 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     var isBuffering by mutableStateOf(false)
     var isPlaying by mutableStateOf(false)
     
-    // Estados iniciales oficiales de RADIO FIDES
     var currentTitle by mutableStateOf("Radio Fides")
     var currentArtist by mutableStateOf("La voz que camina con el pueblo")
     var currentImageUrl by mutableStateOf<String?>(null)
@@ -80,7 +82,6 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     }
                     
                     override fun onMediaMetadataChanged(metadata: MediaMetadata) {
-                        // Solo usamos metadatos del stream si el título actual es el default
                         if (currentTitle == "Radio Fides") { 
                             val streamTitle = metadata.title?.toString()
                             if (!streamTitle.isNullOrEmpty()) {
@@ -114,14 +115,10 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         connectivityManager.registerNetworkCallback(request, networkCallback)
     }
 
-    /**
-     * Obtiene los metadatos y bloquea información que no pertenece a Radio Fides
-     */
     fun fetchMetadata() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val timestamp = System.currentTimeMillis()
-                // Usamos la constante global
                 val url = URL("$METADATA_URL?t=$timestamp")
                 
                 val connection = url.openConnection() as HttpURLConnection
@@ -142,10 +139,13 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     val image = current.optString("track_image", "")
 
                     withContext(Dispatchers.Main) {
-                        // --- FILTRO DE SEGURIDAD ANTIBASURA ---
-                        if (title.contains("Bilirrubina", ignoreCase = true) || 
-                            artist.contains("Bomba Estereo", ignoreCase = true)) {
-                            Log.w("FidesMetadata", "Bloqueado dato de otra radio: $title")
+                        // --- FILTRO DE SEGURIDAD GENERAL (BLACKLIST) ---
+                        val isBlocked = BLACKLIST.any { word ->
+                            title.contains(word, ignoreCase = true) || artist.contains(word, ignoreCase = true)
+                        }
+
+                        if (isBlocked) {
+                            Log.w("FidesMetadata", "Dato bloqueado por Blacklist: $title")
                             currentTitle = "Radio Fides"
                             currentArtist = "La voz que camina con el pueblo"
                             currentImageUrl = null

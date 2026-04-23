@@ -6,6 +6,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.radiofides.ui.screens.FidesHome
 import com.radiofides.ui.screens.WelcomeScreen
+import com.radiofides.ui.screens.NoInternetScreen
 import com.radiofides.viewmodel.FidesViewModel
 
 @Composable
@@ -22,6 +23,10 @@ fun NavGraph(viewModel: FidesViewModel) {
 
         composable("home") {
             FidesHome(viewModel, navController)
+        }
+
+        composable("no_internet") {
+            NoInternetScreen(navController, viewModel)
         }
     }
 }

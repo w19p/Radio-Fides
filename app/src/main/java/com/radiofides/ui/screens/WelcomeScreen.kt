@@ -16,12 +16,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,11 +59,16 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
     // Lógica de navegación condicionada al internet
     LaunchedEffect(isNetworkAvailable) {
         if (isNetworkAvailable) {
-            // Esperamos un momento para que el usuario vea la bienvenida antes de saltar
+            // Si hay internet, esperamos a que termine la animación y vamos al home
             delay(3500)
-            navController.navigate("home") {
-                popUpTo("welcome") { inclusive = true }
+            if (isNetworkAvailable) { // Doble verificación por si se corta en el medio
+                navController.navigate("home") {
+                    popUpTo("welcome") { inclusive = true }
+                }
             }
+        } else {
+            // SI NO HAY INTERNET: Saltamos a la pantalla dedicada para poder tunearla
+            navController.navigate("no_internet")
         }
     }
 
@@ -131,37 +133,18 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
 
                     Spacer(modifier = Modifier.height(60.dp))
 
-                    if (isNetworkAvailable) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(30.dp),
-                            color = Color.White,
-                            strokeWidth = 3.dp
-                        )
-                        Text(
-                            text = "Sintonizando...",
-                            color = Color.White.copy(alpha = 0.7f),
-                            modifier = Modifier.padding(top = 10.dp),
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = Color.Yellow,
-                            modifier = Modifier.size(40.dp)
-                        )
-                        Text(
-                            text = "Sin conexión a internet",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = 10.dp)
-                        )
-                        Text(
-                            text = "Por favor, verifica tu red para continuar",
-                            color = Color.White.copy(alpha = 0.8f),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
+                    // Mostramos el cargando mientras se decide la navegación
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(30.dp),
+                        color = Color.White,
+                        strokeWidth = 3.dp
+                    )
+                    Text(
+                        text = "Sintonizando...",
+                        color = Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(top = 10.dp),
+                        style = MaterialTheme.typography.labelMedium
+                    )
                 }
             }
         }
