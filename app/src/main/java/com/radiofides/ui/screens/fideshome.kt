@@ -311,7 +311,7 @@ fun FidesHome(viewModel: FidesViewModel = viewModel()) {
                 }
 
                 IconButton(
-                    onClick = { viewModel.exitApp() },
+                    onClick = { viewModel },
                     modifier = Modifier
                         .size(48.dp)
                         .background(MaterialTheme.colorScheme.error, CircleShape)

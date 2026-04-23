@@ -2,7 +2,6 @@ package com.radiofides.viewmodel
 
 import android.app.Application
 import android.content.ComponentName
-import android.content.Intent
 import androidx.annotation.OptIn
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -107,29 +106,6 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
 
                 android.util.Log.d("FidesDEBUG", "Stream reiniciado: Conectando al vivo y limpiando buffer.")
             }
-        }
-    }
-
-    /**
-     * Cierra la aplicación por completo enviando un comando al servicio
-     */
-    fun exitApp() {        // Detenemos el servicio de raíz
-        val intent = Intent(getApplication(), FidesMediaService::class.java).apply {
-            action = "ACTION_EXIT"
-        }
-        getApplication<Application>().startService(intent)
-
-        // Salimos al home del teléfono (minimiza todo)
-        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
-            addCategory(Intent.CATEGORY_HOME)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        getApplication<Application>().startActivity(homeIntent)
-
-        // Matamos el proceso después de un instante
-        viewModelScope.launch {
-            delay(500)
-            android.os.Process.killProcess(android.os.Process.myPid())
         }
     }
 
