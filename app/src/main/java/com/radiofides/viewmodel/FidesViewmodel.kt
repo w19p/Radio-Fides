@@ -32,7 +32,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 // --- CONFIGURACIÓN GLOBAL ---
-const val METADATA_URL = "https://api.instant.audio/data/playlist/43/radio-chacaltaya"
+const val METADATA_URL = "https://api.instant.audio/data/playlist/43/radio-fides"
 
 // --- LISTA NEGRA (Añade aquí cualquier palabra o artista que quieras bloquear) ---
 val BLACKLIST = listOf("Bilirrubina", "Bomba Estereo", "Chacaltaya")
@@ -80,9 +80,9 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     override fun onPlaybackStateChanged(state: Int) {
                         isBuffering = (state == Player.STATE_BUFFERING)
                     }
-                    
+
                     override fun onMediaMetadataChanged(metadata: MediaMetadata) {
-                        if (currentTitle == "Radio Fides") { 
+                        if (currentTitle == "Radio Fides") {
                             val streamTitle = metadata.title?.toString()
                             if (!streamTitle.isNullOrEmpty()) {
                                 currentTitle = streamTitle
@@ -93,7 +93,7 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                 })
                 
                 fetchMetadata()
-                
+
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -120,7 +120,7 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val timestamp = System.currentTimeMillis()
                 val url = URL("$METADATA_URL?t=$timestamp")
-                
+
                 val connection = url.openConnection() as HttpURLConnection
                 connection.useCaches = false
                 connection.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate")
