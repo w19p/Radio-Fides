@@ -23,39 +23,48 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.radiofides.R
 import com.radiofides.service.FidesMediaService
+import com.radiofides.service.STREAM_URL
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.File
+import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
 // --- CONFIGURACIÓN GLOBAL ---
 const val METADATA_URL = "https://api.instant.audio/data/playlist/43/radio-fides"
-
-// --- LISTA NEGRA (Añade aquí cualquier palabra o artista que quieras bloquear) ---
 val BLACKLIST = listOf("Bilirrubina", "Bomba Estereo")
 
 @OptIn(UnstableApi::class)
 class FidesViewModel(application: Application) : AndroidViewModel(application) {
 
-     /*1. EL CONTROLADOR (El Control Remoto)
-     Este "browser" es el que se conecta al FidesMediaService.
-     Todo lo que le ordenemos al browser, el servicio lo ejecutará.*/
     private var browser: MediaController? = null
 
-    // 2. ESTADOS DE LA INTERFAZ (UI State)
-    // Usamos 'mutableStateOf' para que Compose sepa que debe redibujar la pantalla cuando cambien.
-    var isBuffering by mutableStateOf(false)  // ¿Está cargando el audio?
-    var isPlaying by mutableStateOf(false)    // ¿Está sonando ahora?
-
+    // --- ESTADOS DE LA INTERFAZ ---
+    var isBuffering by mutableStateOf(false)
+    var isPlaying by mutableStateOf(false)
     var currentTitle by mutableStateOf("Radio Fides")
     var currentArtist by mutableStateOf("La voz que camina con el pueblo")
     var currentImageUrl by mutableStateOf<String?>(null)
 
-    // 3. GESTIÓN DE INTERNET
-    // Es vital saber si hay red para no intentar cargar el stream y gastar recursos en vano.
+    // --- ESTADOS DE GRABACIÓN ---
+    var showSaveDialog by mutableStateOf(false)
+    var nuevoNombreMarcador by mutableStateOf("")
+    var isRecording by mutableStateOf(false)
+    
+    // [NUEVO] Contador de nuevas grabaciones (estilo WhatsApp)
+    var contadorNuevasGrabaciones by mutableStateOf(0)
+    
+    // Para controlar la corrutina de grabación de audio
+    private var recordingJob: Job? = null
+    // Guardamos el timestamp actual de la grabación para nombrar el archivo
+    private var currentRecordingTimestamp: Long = 0
+
+    // --- GESTIÓN DE INTERNET ---
     var isNetworkAvailable by mutableStateOf(true)
     private val connectivityManager = application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
@@ -64,33 +73,34 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         override fun onLost(network: Network) { isNetworkAvailable = false }
     }
 
+    // --- PLAYLIST ---
+    var playlist by mutableStateOf<List<SavedBookmark>>(emptyList())
+        private set
+
+    val folderGrabaciones = File(application.filesDir, "Grabaciones radio fides")
+
+    data class SavedBookmark(
+        val customName: String,
+        val title: String,
+        val artist: String,
+        val imageUrl: String?,
+        val timestamp: Long
+    )
+
     init {
-        // Al iniciar, revisamos internet y nos conectamos al servicio de audio
         checkInitialNetwork()
         registerNetworkCallback()
 
-        // Creamos un "Token" para encontrar nuestro servicio en el sistema
         val sessionToken = SessionToken(application, ComponentName(application, FidesMediaService::class.java))
-
-        // Intentamos conectar el controlador de forma asíncrona (en segundo plano)
         val controllerFuture = MediaController.Builder(application, sessionToken).buildAsync()
 
         controllerFuture.addListener({
             try {
-                // Si la conexión es exitosa, guardamos el "control remoto" (browser)
                 browser = controllerFuture.get()
-
-                // Le ponemos un "oído" (Listener) al reproductor para saber qué está pasando
                 browser?.addListener(object : Player.Listener {
-                    override fun onIsPlayingChanged(playing: Boolean) {
-                        isPlaying = playing // Avisa a la UI si cambió a Play o Pause
-                    }
-                    override fun onPlaybackStateChanged(state: Int) {
-                        isBuffering = (state == Player.STATE_BUFFERING) // Avisa si está cargando
-                    }
-
+                    override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
+                    override fun onPlaybackStateChanged(state: Int) { isBuffering = (state == Player.STATE_BUFFERING) }
                     override fun onMediaMetadataChanged(metadata: MediaMetadata) {
-                        // Si no tenemos datos del JSON, usamos lo que venga en el stream de audio
                         if (currentTitle == "Radio Fides") {
                             val streamTitle = metadata.title?.toString()
                             if (!streamTitle.isNullOrEmpty()) {
@@ -100,21 +110,123 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
                 })
-
-                // Una vez conectados, buscamos la info de la canción y activamos el AutoPlay
                 fetchMetadata()
                 autoPlay()
-
             } catch (e: Exception) {
-                Log.e("FidesVM", "Error al conectar con el servicio: ${e.message}")
+                Log.e("FidesVM", "Error conexión: ${e.message}")
             }
         }, MoreExecutors.directExecutor())
 
-        // Iniciamos el bucle que refresca la canción cada 20 segundos
         startMetadataRefresh()
+        if (!folderGrabaciones.exists()) { folderGrabaciones.mkdirs() }
+        cargarPlaylist()
     }
 
-    // --- FUNCIONES DE RED ---
+    // --- LÓGICA DE GRABACIÓN DE AUDIO REAL ---
+
+    fun iniciarDetenerGrabacion() {
+        if (!isRecording) {
+            // [APRENDIZAJE] Solo permitimos iniciar si hay algo sonando
+            if (!isPlaying) return 
+            
+            isRecording = true
+            currentRecordingTimestamp = System.currentTimeMillis()
+            startAudioRecording(currentRecordingTimestamp)
+            Log.d("FidesVM", "Iniciando grabación de audio...")
+        } else {
+            isRecording = false
+            recordingJob?.cancel() // Detenemos la descarga
+            showSaveDialog = true 
+        }
+    }
+
+    private fun startAudioRecording(timestamp: Long) {
+        recordingJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val audioFile = File(folderGrabaciones, "audio_$timestamp.mp3")
+                val url = URL(STREAM_URL)
+                val connection = url.openConnection()
+                connection.connect()
+
+                connection.getInputStream().use { input ->
+                    FileOutputStream(audioFile).use { output ->
+                        val buffer = ByteArray(8192)
+                        var bytesRead: Int
+                        // [APRENDIZAJE] Grabamos solo mientras el estado sea isRecording
+                        while (isRecording) {
+                            bytesRead = input.read(buffer)
+                            if (bytesRead == -1) break
+                            output.write(buffer, 0, bytesRead)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("FidesVM", "Error al grabar audio: ${e.message}")
+                withContext(Dispatchers.Main) { isRecording = false }
+            }
+        }
+    }
+
+    fun guardarEnPlaylist(nombreElegido: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val timestamp = currentRecordingTimestamp
+                val nuevoMarcador = SavedBookmark(nombreElegido, currentTitle, currentArtist, currentImageUrl, timestamp)
+                
+                val archivoTxt = File(folderGrabaciones, "grabacion_$timestamp.txt")
+                val contenido = "${nuevoMarcador.customName}|${nuevoMarcador.title}|${nuevoMarcador.artist}|${nuevoMarcador.imageUrl}"
+                archivoTxt.writeText(contenido)
+
+                withContext(Dispatchers.Main) {
+                    playlist = (listOf(nuevoMarcador) + playlist)
+                    showSaveDialog = false
+                    nuevoNombreMarcador = ""
+                    isRecording = false 
+                    // [APRENDIZAJE] Incrementamos el contador de nuevas grabaciones
+                    contadorNuevasGrabaciones++
+                }
+            } catch (e: Exception) { 
+                Log.e("FidesVM", "Error guardado metadata: ${e.message}") 
+            }
+        }
+    }
+
+    private fun cargarPlaylist() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val listaTemporal = mutableListOf<SavedBookmark>()
+            if (folderGrabaciones.exists()) {
+                folderGrabaciones.listFiles()?.forEach { archivo ->
+                    if (archivo.name.endsWith(".txt") && archivo.name.startsWith("grabacion_")) {
+                        try {
+                            val datos = archivo.readText().split("|")
+                            if (datos.size >= 4) {
+                                val timestamp = archivo.name.removePrefix("grabacion_").removeSuffix(".txt").toLong()
+                                listaTemporal.add(SavedBookmark(datos[0], datos[1], datos[2], if (datos[3] == "null") null else datos[3], timestamp))
+                            }
+                        } catch (e: Exception) { Log.e("FidesVM", "Error archivo: ${archivo.name}") }
+                    }
+                }
+            }
+            withContext(Dispatchers.Main) {
+                playlist = listaTemporal.sortedByDescending { it.timestamp }
+            }
+        }
+    }
+
+    fun eliminarMarcador(marcador: SavedBookmark) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val archivoTxt = File(folderGrabaciones, "grabacion_${marcador.timestamp}.txt")
+            val archivoMp3 = File(folderGrabaciones, "audio_${marcador.timestamp}.mp3")
+            
+            if (archivoTxt.exists()) archivoTxt.delete()
+            if (archivoMp3.exists()) archivoMp3.delete()
+            
+            withContext(Dispatchers.Main) {
+                playlist = playlist.filter { it.timestamp != marcador.timestamp }
+            }
+        }
+    }
+
     private fun checkInitialNetwork() {
         val activeNetwork = connectivityManager.activeNetwork
         val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
@@ -126,52 +238,30 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         connectivityManager.registerNetworkCallback(request, networkCallback)
     }
 
-    // --- GESTIÓN DE DATOS (JSON) ---
-    // Esta función va a internet, baja el JSON y extrae la canción, el autor y la foto.
     fun fetchMetadata() {
-        viewModelScope.launch(Dispatchers.IO) { // Se ejecuta en un hilo de red (IO)
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                val timestamp = System.currentTimeMillis() // Evita que el celular use datos viejos guardados
-                val url = URL("$METADATA_URL?t=$timestamp")
-
+                val url = URL("$METADATA_URL?t=${System.currentTimeMillis()}")
                 val connection = url.openConnection() as HttpURLConnection
                 val jsonText = connection.inputStream.bufferedReader().readText()
-
                 val root = JSONObject(jsonText)
                 val results = root.optJSONArray("result")
-
                 if (results != null && results.length() > 0) {
                     val current = results.getJSONObject(0)
-                    val title = current.optString("track_title", "Radio Fides")
-                    val artist = current.optString("track_artist", "La voz que camina con el pueblo")
-                    val image = current.optString("track_image", "")
-
-                    // Volvemos al hilo principal (Main) para actualizar la pantalla
                     withContext(Dispatchers.Main) {
-                        // Filtro de lista negra
-                        val isBlocked = BLACKLIST.any { word ->
-                            title.contains(word, ignoreCase = true) || artist.contains(word, ignoreCase = true)
-                        }
-
-                        if (isBlocked) {
+                        val title = current.optString("track_title", "Radio Fides")
+                        val artist = current.optString("track_artist", "La voz que camina con el pueblo")
+                        if (BLACKLIST.any { title.contains(it, true) || artist.contains(it, true) }) {
                             resetToDefaultMetadata()
-                            return@withContext
-                        }
-
-                        // Si la canción cambió, actualizamos todo
-                        if (currentTitle != title || currentArtist != artist) {
+                        } else if (currentTitle != title || currentArtist != artist) {
                             currentTitle = title
                             currentArtist = artist
-                            currentImageUrl = image.ifEmpty { null }
-
-                            // ¡IMPORTANTE! Mandamos la nueva info al Servicio para que se vea en la notificación
+                            currentImageUrl = current.optString("track_image", "").ifEmpty { null }
                             updateMediaSession(currentTitle, currentArtist, currentImageUrl)
                         }
                     }
                 }
-            } catch (e: Exception) {
-                Log.e("FidesVM", "Error al obtener metadata JSON: ${e.message}")
-            }
+            } catch (e: Exception) { Log.e("FidesVM", "Error JSON") }
         }
     }
 
@@ -185,53 +275,37 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     private fun startMetadataRefresh() {
         viewModelScope.launch {
             while (true) {
-                delay(20000) // Espera 20 segundos antes de volver a preguntar
+                delay(20000)
                 if (isNetworkAvailable) fetchMetadata()
             }
         }
     }
 
-    // --- SINCRONIZACIÓN CON EL SERVICIO ---
-    // Esta función le dice al servicio: "Oye, actualiza la notificación con esta foto y título"
     private fun updateMediaSession(title: String, artist: String, image: String?) {
         browser?.let { controller ->
             val logoUri = "android.resource://${getApplication<Application>().packageName}/${R.drawable.logo_fides_oficial}".toUri()
-            val metadata = MediaMetadata.Builder()
-                .setTitle(title)
-                .setArtist(artist)
-                .setArtworkUri(if (!image.isNullOrEmpty()) image.toUri() else logoUri)
-                .build()
-
-            // Reemplazamos los datos del stream actual con la nueva metadata
+            val metadata = MediaMetadata.Builder().setTitle(title).setArtist(artist)
+                .setArtworkUri(if (!image.isNullOrEmpty()) image.toUri() else logoUri).build()
             val currentItem = controller.currentMediaItem?.buildUpon()?.setMediaMetadata(metadata)?.build()
-            if (currentItem != null) {
-                controller.replaceMediaItem(0, currentItem)
-            }
+            if (currentItem != null) controller.replaceMediaItem(0, currentItem)
         }
     }
 
-    // --- CONTROLES DE AUDIO ---
-    fun togglePlayPause() {
-        browser?.let { controller ->
-            if (isPlaying) controller.pause() else playStream()
-        }
-    }
+    fun togglePlayPause() { browser?.let { if (isPlaying) it.pause() else playStream() } }
 
     private fun playStream() {
         if (!isNetworkAvailable) return
-        browser?.let { controller ->
-            controller.currentMediaItem?.let { item -> controller.setMediaItem(item) }
-            controller.seekToDefaultPosition() // Salta al vivo
-            controller.prepare()
-            controller.play()
+        browser?.let {
+            it.currentMediaItem?.let { item -> it.setMediaItem(item) }
+            it.seekToDefaultPosition()
+            it.prepare()
+            it.play()
         }
     }
 
-    // Función que intenta arrancar la radio apenas la app abre
     fun autoPlay() {
         viewModelScope.launch {
-            // Esperamos un momento a que el controlador esté listo
-            while (browser == null) { delay(100) }
+            while (browser == null) delay(100)
             if (!isPlaying && isNetworkAvailable) playStream()
         }
     }
@@ -239,7 +313,6 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         super.onCleared()
         connectivityManager.unregisterNetworkCallback(networkCallback)
-        browser?.release() // Soltamos el control remoto al cerrar la app
-        browser = null
+        browser?.release()
     }
 }

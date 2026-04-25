@@ -7,6 +7,7 @@ import androidx.navigation.compose.rememberNavController
 import com.radiofides.ui.screens.FidesHome
 import com.radiofides.ui.screens.WelcomeScreen
 import com.radiofides.ui.screens.NoInternetScreen
+import com.radiofides.ui.screens.PlaylistScreen
 import com.radiofides.viewmodel.FidesViewModel
 
 @Composable
@@ -27,6 +28,11 @@ fun NavGraph(viewModel: FidesViewModel) {
 
         composable("no_internet") {
             NoInternetScreen(navController, viewModel)
+        }
+
+        // [APRENDIZAJE] Añadimos la ruta "playlist" para que podamos navegar a la pantalla de grabaciones
+        composable("playlist") {
+            PlaylistScreen(viewModel, navController)
         }
     }
 }
