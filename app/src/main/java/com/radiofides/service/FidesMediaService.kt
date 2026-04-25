@@ -96,7 +96,7 @@ class FidesMediaService : MediaSessionService() {
                 ): MediaSession.ConnectionResult {
 
                     // A) REGISTRO: Aquí debes "añadir" todos los comandos que creaste arriba
-                    // Si no los añades aquí, el botón aparecerá pero no hará nada.
+                    // Si no los añades aquí, el botón aparecerá, pero no hará nada.
                     val availableSessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
                         //.add(exitCommand)
                         //.add(shareCommand) // <-- Añadimos el nuevo comando

@@ -61,10 +61,8 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
         if (isNetworkAvailable) {
             // Si hay internet, esperamos a que termine la animación y vamos al home
             delay(3500)
-            if (isNetworkAvailable) { // Doble verificación por si se corta en el medio
-                navController.navigate("home") {
-                    popUpTo("welcome") { inclusive = true }
-                }
+            navController.navigate("home") {
+                popUpTo("welcome") { inclusive = true }
             }
         } else {
             // SI NO HAY INTERNET: Saltamos a la pantalla dedicada para poder tunearla
@@ -133,7 +131,7 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
 
                     Spacer(modifier = Modifier.height(60.dp))
 
-                    // Mostramos el cargando mientras se decide la navegación
+                    // Mostramos él cargando mientras se decide la navegación
                     CircularProgressIndicator(
                         modifier = Modifier.size(30.dp),
                         color = Color.White,
