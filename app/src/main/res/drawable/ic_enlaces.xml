@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Círculo base -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#1E2A38"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M12,2
+                          A10,10 0 1,1 12,22
+                          A10,10 0 1,1 12,2"/>
+
+    <!-- Curvas verticales (más elegantes) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#1E2A38"
+        android:strokeWidth="1.2"
+        android:strokeLineCap="round"
+        android:pathData="M8,4
+                          C6,8 6,16 8,20
+                          M16,4
+                          C18,8 18,16 16,20"/>
+
+    <!-- Línea central -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#1E2A38"
+        android:strokeWidth="1.2"
+        android:strokeLineCap="round"
+        android:pathData="M12,2v20"/>
+
+    <!-- Línea horizontal suave -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#1E2A38"
+        android:strokeWidth="1.1"
+        android:strokeLineCap="round"
+        android:pathData="M4,12h16"/>
+</vector>
