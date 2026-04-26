@@ -76,4 +76,8 @@ dependencies {
 
     // jetpack compose navigation
     implementation("androidx.navigation:navigation-compose:2.8.0")
+    dependencies {
+        // ... otras dependencias ...
+        implementation("androidx.compose.material:material-icons-extended")
+    }
 }

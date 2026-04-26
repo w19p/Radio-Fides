@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -85,7 +87,7 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
     val isNetworkAvailable = viewModel.isNetworkAvailable
     val context = LocalContext.current
 
-    // [APRENDIZAJE] Función para formatear los segundos del temporizador a 00:00
+    // [APRENDIZAJE] Función para formatear los segundos del temporizador a 00:00:00
     val tiempoFormateado = remember(viewModel.tiempoTemporizador) {
         val totalSegundos = viewModel.tiempoTemporizador
         val horas = totalSegundos / 3600
@@ -133,7 +135,6 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
         label = "recording_alpha"
     )
 
-    // [APRENDIZAJE] Animación de parpadeo para el botón de TEMPORIZADOR
     val sleepTransition = rememberInfiniteTransition(label = "sleep_pulse")
     val sleepAlpha by sleepTransition.animateFloat(
         initialValue = 1f,
@@ -145,7 +146,7 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(text = "Radio Fides", fontWeight = FontWeight.Black) },
+                title = { Text(text = "", fontWeight = FontWeight.Black) },
                 navigationIcon = {
                     Box {
                         Column(
@@ -182,7 +183,7 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                             DropdownMenuItem(
                                 text = { Text("Página Oficial", fontWeight = FontWeight.Bold) },
                                 onClick = { openUrl("https://radiofides.com/es/") },
-                                leadingIcon = { Image(painter = painterResource(id = R.drawable.logo_fides_oficial), contentDescription = null, modifier = Modifier.size(22.dp)) },
+                                leadingIcon = { Image(painter = painterResource(id = R.drawable.logo_fides_oficial), contentDescription = null, modifier = Modifier.size(24.dp)) }
                             )
                             DropdownMenuItem(
                                 text = { Text("Clínica Fides", fontWeight = FontWeight.Bold) },
@@ -226,38 +227,61 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                     }
                 },
                 actions = {
-                    // [APRENDIZAJE] Hacemos lo mismo para Grabaciones: Icono con Badge arriba y Texto abajo
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .padding(end = 16.dp)
-                            .clickable {
-                                viewModel.contadorNuevasGrabaciones = 0
-                                navController.navigate("playlist")
-                            }
-                    ) {
-                        BadgedBox(
-                            badge = {
-                                if (viewModel.contadorNuevasGrabaciones > 0) {
-                                    Badge(containerColor = Color.Red) {
-                                        Text(viewModel.contadorNuevasGrabaciones.toString(), color = Color.White)
-                                    }
-                                }
-                            }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // [NUEVO] Botón directo de PROGRAMACIÓN
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .padding(end = 16.dp)
+                                .clickable { navController.navigate("schedule") }
                         ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.ic_playlist), 
+                                imageVector = Icons.Default.DateRange, 
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp)
                             )
-                        }
-                        Text(
-                            text = "GRABACIONES",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.ExtraBold
+                            Text(
+                                text = "PROGRAMACIÓN",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
                             )
-                        )
+                        }
+
+                        // Botón de GRABACIONES
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .padding(end = 16.dp)
+                                .clickable {
+                                    viewModel.contadorNuevasGrabaciones = 0
+                                    navController.navigate("playlist")
+                                }
+                        ) {
+                            BadgedBox(
+                                badge = {
+                                    if (viewModel.contadorNuevasGrabaciones > 0) {
+                                        Badge(containerColor = Color.Red) {
+                                            Text(viewModel.contadorNuevasGrabaciones.toString(), color = Color.White)
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_playlist), 
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            Text(
+                                text = "GRABACIONES",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            )
+                        }
                     }
                 }
             )
@@ -268,7 +292,6 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
-            // --- SECCIÓN 1: El Logo ---
             ElevatedCard(
                 modifier = Modifier.size(280.dp),
                 shape = RoundedCornerShape(32.dp),
@@ -284,7 +307,6 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                 }
             }
 
-            // --- SECCIÓN 2: Información ---
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(110.dp),
@@ -327,7 +349,6 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                                 withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)) { append(parts[1]) }
                             } else { append(currentTime) }
 
-                            // Contador del temporizador junto a la hora
                             if (viewModel.tiempoTemporizador > 0) {
                                 append("  ") 
                                 withStyle(style = SpanStyle(fontWeight = FontWeight.Black, fontSize = 14.sp, color = Color.Red)) {
@@ -339,16 +360,14 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                 }
             }
 
-            // --- SECCIÓN 3: Controles ---
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                // [FLUJO] Botón de GRABAR
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconButton(
                         onClick = { if (isPlaying || viewModel.isRecording) { viewModel.iniciarDetenerGrabacion() } }, 
                         enabled = isPlaying || viewModel.isRecording,
                         modifier = Modifier.size(48.dp).graphicsLayer(alpha = if (viewModel.isRecording) recordingAlpha else if (isPlaying) 1f else 0.5f).background(if (viewModel.isRecording) Color.Red else MaterialTheme.colorScheme.error.copy(alpha = if (isPlaying) 1f else 0.5f), CircleShape)
                     ) {
-                        Icon(painter = painterResource(id = if (viewModel.isRecording) R.drawable.ic_stop else R.drawable.ic_grabadora), contentDescription = "Grabar", tint = Color.White.copy(alpha = if (isPlaying || viewModel.isRecording) 1f else 0.5f))
+                        Icon(painter = painterResource(id = if (viewModel.isRecording) R.drawable.ic_stop else R.drawable.ic_grabadora), contentDescription = "Grabar", tint = Color.White.copy(alpha = if (isPlaying || viewModel.isRecording) {1f} else 0.5f))
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(text = if (viewModel.isRecording) "GRABANDO..." else "GRABAR", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold), color = if (viewModel.isRecording) Color.Red.copy(alpha = recordingAlpha) else Color.Gray, modifier = Modifier.graphicsLayer(alpha = if (viewModel.isRecording) recordingAlpha else if (isPlaying) 1f else 0.5f))
@@ -363,20 +382,12 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                     }
                 }
 
-                // [NUEVO] Botón de TEMPORIZADOR con color fijo y parpadeo
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconButton(
                         onClick = { viewModel.showSleepDialog = true }, 
-                        modifier = Modifier
-                            .size(48.dp)
-                            .graphicsLayer(alpha = if (viewModel.tiempoTemporizador > 0) sleepAlpha else 1f)
-                            .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        modifier = Modifier.size(48.dp).graphicsLayer(alpha = if (viewModel.tiempoTemporizador > 0) sleepAlpha else 1f).background(MaterialTheme.colorScheme.primary, CircleShape)
                     ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.temporizador),
-                            contentDescription = "Temporizador",
-                            tint = Color.White
-                        )
+                        Icon(painter = painterResource(id = R.drawable.temporizador), contentDescription = "Temporizador", tint = Color.White)
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -388,7 +399,6 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                 }
             }
 
-            // DIÁLOGO DEL TEMPORIZADOR
             if (viewModel.showSleepDialog) {
                 AlertDialog(
                     onDismissRequest = { viewModel.showSleepDialog = false },
@@ -409,7 +419,6 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                 )
             }
 
-            // DIÁLOGO DE GUARDADO
             if (viewModel.showSaveDialog) {
                 AlertDialog(
                     onDismissRequest = { viewModel.showSaveDialog = false },
