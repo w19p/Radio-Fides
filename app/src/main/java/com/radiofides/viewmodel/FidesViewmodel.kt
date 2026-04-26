@@ -55,14 +55,15 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     var showSaveDialog by mutableStateOf(false)
     var nuevoNombreMarcador by mutableStateOf("")
     var isRecording by mutableStateOf(false)
-    
-    // [NUEVO] Contador de nuevas grabaciones (estilo WhatsApp)
     var contadorNuevasGrabaciones by mutableStateOf(0)
     
-    // Para controlar la corrutina de grabación de audio
     private var recordingJob: Job? = null
-    // Guardamos el timestamp actual de la grabación para nombrar el archivo
     private var currentRecordingTimestamp: Long = 0
+
+    // [NUEVO] ESTADOS PARA EL TEMPORIZADOR (SLEEP TIMER)
+    var tiempoTemporizador by mutableStateOf(0) // AHORA SON SEGUNDOS RESTANTES
+    var showSleepDialog by mutableStateOf(false)
+    private var sleepJob: Job? = null
 
     // --- GESTIÓN DE INTERNET ---
     var isNetworkAvailable by mutableStateOf(true)
@@ -122,20 +123,37 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         cargarPlaylist()
     }
 
-    // --- LÓGICA DE GRABACIÓN DE AUDIO REAL ---
+    // --- LÓGICA DEL TEMPORIZADOR (SLEEP TIMER) ---
+
+    fun programarApagado(minutos: Int) {
+        sleepJob?.cancel() 
+        tiempoTemporizador = minutos * 60 // Convertimos minutos a segundos
+        showSleepDialog = false
+        
+        if (minutos > 0) {
+            sleepJob = viewModelScope.launch {
+                while (tiempoTemporizador > 0) {
+                    delay(1000) // Descontamos cada 1 segundo
+                    tiempoTemporizador--
+                }
+                // ¡Tiempo cumplido! Apagamos la radio
+                browser?.pause()
+                Log.d("FidesVM", "Sleep Timer: Radio apagada automáticamente")
+            }
+        }
+    }
+
+    // --- LÓGICA DE GRABACIÓN ---
 
     fun iniciarDetenerGrabacion() {
         if (!isRecording) {
-            // [APRENDIZAJE] Solo permitimos iniciar si hay algo sonando
             if (!isPlaying) return 
-            
             isRecording = true
             currentRecordingTimestamp = System.currentTimeMillis()
             startAudioRecording(currentRecordingTimestamp)
-            Log.d("FidesVM", "Iniciando grabación de audio...")
         } else {
             isRecording = false
-            recordingJob?.cancel() // Detenemos la descarga
+            recordingJob?.cancel()
             showSaveDialog = true 
         }
     }
@@ -152,7 +170,6 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     FileOutputStream(audioFile).use { output ->
                         val buffer = ByteArray(8192)
                         var bytesRead: Int
-                        // [APRENDIZAJE] Grabamos solo mientras el estado sea isRecording
                         while (isRecording) {
                             bytesRead = input.read(buffer)
                             if (bytesRead == -1) break
@@ -161,7 +178,7 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             } catch (e: Exception) {
-                Log.e("FidesVM", "Error al grabar audio: ${e.message}")
+                Log.e("FidesVM", "Error grabar audio")
                 withContext(Dispatchers.Main) { isRecording = false }
             }
         }
@@ -172,22 +189,17 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val timestamp = currentRecordingTimestamp
                 val nuevoMarcador = SavedBookmark(nombreElegido, currentTitle, currentArtist, currentImageUrl, timestamp)
-                
                 val archivoTxt = File(folderGrabaciones, "grabacion_$timestamp.txt")
-                val contenido = "${nuevoMarcador.customName}|${nuevoMarcador.title}|${nuevoMarcador.artist}|${nuevoMarcador.imageUrl}"
-                archivoTxt.writeText(contenido)
+                archivoTxt.writeText("${nuevoMarcador.customName}|${nuevoMarcador.title}|${nuevoMarcador.artist}|${nuevoMarcador.imageUrl}")
 
                 withContext(Dispatchers.Main) {
                     playlist = (listOf(nuevoMarcador) + playlist)
                     showSaveDialog = false
                     nuevoNombreMarcador = ""
                     isRecording = false 
-                    // [APRENDIZAJE] Incrementamos el contador de nuevas grabaciones
                     contadorNuevasGrabaciones++
                 }
-            } catch (e: Exception) { 
-                Log.e("FidesVM", "Error guardado metadata: ${e.message}") 
-            }
+            } catch (e: Exception) { Log.e("FidesVM", "Error guardado") }
         }
     }
 
@@ -203,7 +215,7 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                                 val timestamp = archivo.name.removePrefix("grabacion_").removeSuffix(".txt").toLong()
                                 listaTemporal.add(SavedBookmark(datos[0], datos[1], datos[2], if (datos[3] == "null") null else datos[3], timestamp))
                             }
-                        } catch (e: Exception) { Log.e("FidesVM", "Error archivo: ${archivo.name}") }
+                        } catch (e: Exception) { Log.e("FidesVM", "Error archivo") }
                     }
                 }
             }
@@ -217,10 +229,8 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             val archivoTxt = File(folderGrabaciones, "grabacion_${marcador.timestamp}.txt")
             val archivoMp3 = File(folderGrabaciones, "audio_${marcador.timestamp}.mp3")
-            
             if (archivoTxt.exists()) archivoTxt.delete()
             if (archivoMp3.exists()) archivoMp3.delete()
-            
             withContext(Dispatchers.Main) {
                 playlist = playlist.filter { it.timestamp != marcador.timestamp }
             }
