@@ -291,18 +291,29 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
-            // --- SECCIÓN 1: El Logo ---
-            ElevatedCard(
-                modifier = Modifier.size(280.dp),
+            // --- SECCIÓN 1: El Logo con Fondo de Imagen ---
+            ElevatedCard(    modifier = Modifier.size(280.dp),
                 shape = RoundedCornerShape(32.dp),
-                colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
-                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 12.dp)
+                // Quitamos el containerColor blanco para que no interfiera si hay transparencias
+                colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 12.dp),
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    // [NUEVO] CAPA 1: Imagen de FONDO
                     Image(
-                        painter = painterResource(id = R.drawable.logo_fides_oficial),
+                        painter = painterResource(id = R.drawable.fondofides), // <-- Tu imagen de fondo aquí
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop // Importante para que cubra todo el cuadro
+                    )
+
+                    // CAPA 2: Imagen del LOGO (Encima del fondo)
+                    Image(
+                        painter = painterResource(id = R.drawable.logo2),
                         contentDescription = "Logo Fides",
-                        modifier = Modifier.size(200.dp).padding(16.dp)
+                        modifier = Modifier
+                            .size(200.dp)
+                            .padding(16.dp)
                     )
                 }
             }

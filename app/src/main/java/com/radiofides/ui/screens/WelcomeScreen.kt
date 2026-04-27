@@ -29,8 +29,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -73,14 +73,19 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
+            // [OPCIÓN 1] USAR FONDO AUTOMÁTICO (Claro u Oscuro según el sistema)
+             .background(MaterialTheme.colorScheme.background),
+
+            // [OPCIÓN 2] USAR DEGRADADO CON TUS COLORES DE "Color.kt"
+            /*.background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                        // Aquí usamos las variables que creamos en ui/theme/Color.kt
+                        AzulNocheTop,    // Color superior claro
+                        AzulNocheBottom  // Color inferior claro
                     )
                 )
-            ),
+            ),*/
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -98,7 +103,13 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
                 ) {
                     Box(modifier = Modifier.fillMaxSize().background(Color.White), contentAlignment = Alignment.Center) {
                         Image(
-                            painter = painterResource(id = R.drawable.logo_fides_oficial),
+                            painter = painterResource(id = R.drawable.fondofides), // <-- Tu imagen de fondo aquí
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop // Importante para que cubra todo el cuadro
+                        )
+                        Image(
+                            painter = painterResource(id = R.drawable.logo2),
                             contentDescription = "Logo",
                             modifier = Modifier.size(160.dp)
                         )
