@@ -17,7 +17,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 
 // --- URL GLOBAL PARA EL AUDIO ---
-const val STREAM_URL = "https://usa7.fastcast4u.com/proxy/grflores?mp=/stream/1/"
+const val STREAM_URL = "https://cast6.asurahosting.com/proxy/irfradio/stream/1/"
 
 @UnstableApi
 class FidesMediaService : MediaSessionService() {

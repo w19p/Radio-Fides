@@ -406,7 +406,7 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                         enabled = isPlaying || viewModel.isRecording,
                         modifier = Modifier.size(48.dp).graphicsLayer(alpha = if (viewModel.isRecording) recordingAlpha else if (isPlaying) 1f else 0.5f).background(if (viewModel.isRecording) Color.Red else MaterialTheme.colorScheme.error.copy(alpha = if (isPlaying) 1f else 0.5f), CircleShape)
                     ) {
-                        Icon(painter = painterResource(id = if (viewModel.isRecording) R.drawable.ic_stop else R.drawable.ic_grabadora), contentDescription = "Grabar", tint = Color.White.copy(alpha = if (isPlaying || viewModel.isRecording) {1f} else 0.5f))
+                        Icon(painter = painterResource(id = if (viewModel.isRecording) R.drawable.ic_exit else R.drawable.ic_grabadora), contentDescription = "Grabar", tint = Color.White.copy(alpha = if (isPlaying || viewModel.isRecording) {1f} else 0.5f))
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(text = if (viewModel.isRecording) "GRABANDO..." else "GRABAR", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold), color = if (viewModel.isRecording) Color.Red.copy(alpha = recordingAlpha) else Color.Gray, modifier = Modifier.graphicsLayer(alpha = if (viewModel.isRecording) recordingAlpha else if (isPlaying) 1f else 0.5f))
