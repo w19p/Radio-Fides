@@ -4,38 +4,26 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.activity.viewModels
 import com.radiofides.navigation.NavGraph
 import com.radiofides.ui.theme.RadioFidesTheme
-import dagger.hilt.android.AndroidEntryPoint
+import com.radiofides.viewmodel.FidesViewModel
 
-@AndroidEntryPoint
+// [CORREGIDO] Se eliminó @AndroidEntryPoint — no se usa Hilt en ningún lugar del proyecto.
+// El ViewModel se obtiene correctamente con viewModels() que usa AndroidViewModelFactory
+// de forma automática, lo que es perfecto para AndroidViewModel.
 class MainActivity : ComponentActivity() {
+
+    // [CORREGIDO] Forma correcta de obtener un AndroidViewModel sin Hilt
+    private val viewModel: FidesViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            NavGraph(viewModel())
+            RadioFidesTheme {
+                NavGraph(viewModel)
+            }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    RadioFidesTheme {
-        Greeting("Android")
     }
 }

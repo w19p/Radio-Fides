@@ -86,6 +86,7 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
     val isPlaying = viewModel.isPlaying
     val isNetworkAvailable = viewModel.isNetworkAvailable
     val context = LocalContext.current
+    val currentProgram = viewModel.currentProgram
 
     // [APRENDIZAJE] Función para formatear los segundos del temporizador a 00:00:00
     val tiempoFormateado = remember(viewModel.tiempoTemporizador) {
@@ -194,41 +195,40 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                             DropdownMenuItem(
-                                text = { Text("Facebook", color = Color.Black) },
+                                text = { Text("Facebook", color = Color.White) },
                                 onClick = { openUrl("https://www.facebook.com/RadioFidesBolivia/?locale=es_LA") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.iconfacebook), contentDescription = null, modifier = Modifier.size(22.dp)) },
-                                //modifier = Modifier.background(Color(0xFF1877F2))
+                                modifier = Modifier.background(Color(0xFF1877F2))
                             )
                             DropdownMenuItem(
-                                text = { Text("Instagram", color = Color.Black) },
+                                text = { Text("Instagram", color = Color.White) },
                                 onClick = { openUrl("https://www.instagram.com/radiofidesbolivia/") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.iconinstagram), contentDescription = null, modifier = Modifier.size(22.dp)) },
-                                //modifier = Modifier.background(Color(0xFFE4405F))
+                                modifier = Modifier.background(Color(0xFFE4405F))
                             )
                             DropdownMenuItem(
-                                text = { Text("TikTok", color = Color.Black) },
+                                text = { Text("TikTok", color = Color.White) },
                                 onClick = { openUrl("https://www.tiktok.com/@radiofidesboliviaoficial") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.icontiktok), contentDescription = null, modifier = Modifier.size(22.dp)) },
-                                //modifier = Modifier.background(Color.Black)
+                                modifier = Modifier.background(Color.Black)
                             )
                             DropdownMenuItem(
-                                text = { Text("Twitter (X)", color = Color.Black) },
+                                text = { Text("Twitter (X)", color = Color.White) },
                                 onClick = { openUrl("https://x.com/GrupoFides?mx=2") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.icontwitter), contentDescription = null, modifier = Modifier.size(22.dp)) },
-                                //modifier = Modifier.background(Color(0xFF14171A))
+                                modifier = Modifier.background(Color(0xFF14171A))
                             )
                             DropdownMenuItem(
-                                text = { Text("YouTube", color = Color.Black) },
+                                text = { Text("YouTube", color = Color.White) },
                                 onClick = { openUrl("https://www.youtube.com/@RadioFidesdeBolivia/") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.iconyoutube), contentDescription = null, modifier = Modifier.size(22.dp)) },
-                                //modifier = Modifier.background(Color(0xFFFF0000))
+                                modifier = Modifier.background(Color(0xFFFF0000))
                             )
                         }
                     }
                 },
                 actions = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // [NUEVO] Botón directo de PROGRAMACIÓN
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
@@ -249,7 +249,6 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                             )
                         }
 
-                        // Botón de GRABACIONES
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
@@ -292,6 +291,7 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
+            // --- SECCIÓN 1: El Logo ---
             ElevatedCard(
                 modifier = Modifier.size(280.dp),
                 shape = RoundedCornerShape(32.dp),
@@ -307,6 +307,7 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                 }
             }
 
+            // --- SECCIÓN 2: Información Inteligente ---
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(110.dp),
@@ -319,16 +320,40 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                             modifier = Modifier.padding(12.dp).size(85.dp).shadow(10.dp, RoundedCornerShape(12.dp), clip = true),
                             shape = RoundedCornerShape(12.dp), color = Color.White
                         ) {
-                            if (viewModel.currentImageUrl.isNullOrEmpty()) {
-                                Image(painter = painterResource(id = R.drawable.logo_reproductor), contentDescription = null, modifier = Modifier.padding(8.dp), contentScale = ContentScale.Fit)
+                            // [LÓGICA] Foto: Si es musical y hay carátula en JSON -> Mostrar. Si no -> Logo genérico.
+                            if (currentProgram.isMusical && !viewModel.currentImageUrl.isNullOrEmpty()) {
+                                AsyncImage(
+                                    model = viewModel.currentImageUrl,
+                                    contentDescription = "Portada",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
                             } else {
-                                AsyncImage(model = viewModel.currentImageUrl, contentDescription = "Portada", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                                Image(
+                                    painter = painterResource(id = R.drawable.logo_reproductor),
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(8.dp),
+                                    contentScale = ContentScale.Fit
+                                )
                             }
                         }
                         Column(modifier = Modifier.fillMaxHeight().padding(end = 16.dp, top = 12.dp, bottom = 12.dp), verticalArrangement = Arrangement.Center) {
-                            Text(text = viewModel.currentTitle, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold, fontSize = 18.sp), maxLines = 1, modifier = Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE))
+                            // [LÓGICA] Título: Si es musical -> Canción. Si no -> Nombre del Programa.
+                            Text(
+                                text = if (currentProgram.isMusical) viewModel.currentTitle else currentProgram.name,
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold, fontSize = 18.sp),
+                                maxLines = 1,
+                                modifier = Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE)
+                            )
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = viewModel.currentArtist, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, maxLines = 1, modifier = Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE))
+                            // [LÓGICA] Artista/Conductor: Si es musical -> Cantante. Si no -> Locutor.
+                            Text(
+                                text = if (currentProgram.isMusical) viewModel.currentArtist else currentProgram.conductor,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                                modifier = Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE)
+                            )
                         }
                     }
                 }
@@ -349,6 +374,7 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                                 withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)) { append(parts[1]) }
                             } else { append(currentTime) }
 
+                            // Contador del temporizador junto a la hora
                             if (viewModel.tiempoTemporizador > 0) {
                                 append("  ") 
                                 withStyle(style = SpanStyle(fontWeight = FontWeight.Black, fontSize = 14.sp, color = Color.Red)) {
@@ -360,7 +386,9 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                 }
             }
 
+            // --- SECCIÓN 3: Controles ---
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                // [FLUJO] Botón de GRABAR
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconButton(
                         onClick = { if (isPlaying || viewModel.isRecording) { viewModel.iniciarDetenerGrabacion() } }, 
@@ -382,12 +410,20 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                     }
                 }
 
+                // [NUEVO] Botón de TEMPORIZADOR con color fijo y parpadeo
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconButton(
                         onClick = { viewModel.showSleepDialog = true }, 
-                        modifier = Modifier.size(48.dp).graphicsLayer(alpha = if (viewModel.tiempoTemporizador > 0) sleepAlpha else 1f).background(MaterialTheme.colorScheme.primary, CircleShape)
+                        modifier = Modifier
+                            .size(48.dp)
+                            .graphicsLayer(alpha = if (viewModel.tiempoTemporizador > 0) sleepAlpha else 1f)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
                     ) {
-                        Icon(painter = painterResource(id = R.drawable.temporizador), contentDescription = "Temporizador", tint = Color.White)
+                        Icon(
+                            painter = painterResource(id = R.drawable.temporizador),
+                            contentDescription = "Temporizador",
+                            tint = Color.White
+                        )
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -399,6 +435,7 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                 }
             }
 
+            // DIÁLOGO DEL TEMPORIZADOR
             if (viewModel.showSleepDialog) {
                 AlertDialog(
                     onDismissRequest = { viewModel.showSleepDialog = false },
@@ -419,6 +456,7 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                 )
             }
 
+            // DIÁLOGO DE GUARDADO
             if (viewModel.showSaveDialog) {
                 AlertDialog(
                     onDismissRequest = { viewModel.showSaveDialog = false },

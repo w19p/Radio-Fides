@@ -98,23 +98,20 @@ fun PlaylistScreen(viewModel: FidesViewModel, navController: NavController) {
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End
                             ) {
-                                // BOTÓN REPRODUCIR (Abre reproductores externos: VLC, MX Player, etc.)
+                                // BOTÓN REPRODUCIR (Externo)
                                 IconButton(onClick = { 
                                     try {
                                         val audioFile = File(viewModel.folderGrabaciones, "audio_${marcador.timestamp}.mp3")
-                                        
                                         if (audioFile.exists()) {
                                             val contentUri: Uri = FileProvider.getUriForFile(
                                                 context,
                                                 "${context.packageName}.fileprovider",
                                                 audioFile
                                             )
-
                                             val playIntent = Intent(Intent.ACTION_VIEW).apply {
                                                 setDataAndType(contentUri, "audio/*")
                                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                             }
-
                                             context.startActivity(Intent.createChooser(playIntent, "Selecciona tu reproductor"))
                                         } else {
                                             Toast.makeText(context, "El archivo de audio no existe", Toast.LENGTH_SHORT).show()
@@ -126,20 +123,34 @@ fun PlaylistScreen(viewModel: FidesViewModel, navController: NavController) {
                                     Icon(Icons.Default.PlayArrow, contentDescription = "Reproductor Externo", tint = MaterialTheme.colorScheme.primary)
                                 }
 
-                                // BOTÓN COMPARTIR
+                                // [APRENDIZAJE] BOTÓN COMPARTIR ARCHIVO REAL: 
+                                // Ahora envía el .mp3 físicamente
                                 IconButton(onClick = {
-                                    val sendIntent: Intent = Intent().apply {
-                                        action = Intent.ACTION_SEND
-                                        putExtra(Intent.EXTRA_TEXT, "¡Mira lo que escuché en Radio Fides!\n" +
-                                                "Grabación: ${marcador.customName}\n" +
-                                                "Tema: ${marcador.title}\n" +
-                                                "Programa: ${marcador.artist}")
-                                        type = "text/plain"
+                                    try {
+                                        val audioFile = File(viewModel.folderGrabaciones, "audio_${marcador.timestamp}.mp3")
+                                        if (audioFile.exists()) {
+                                            val contentUri: Uri = FileProvider.getUriForFile(
+                                                context,
+                                                "${context.packageName}.fileprovider",
+                                                audioFile
+                                            )
+
+                                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                type = "audio/mpeg" // Tipo de archivo audio
+                                                putExtra(Intent.EXTRA_STREAM, contentUri) // Adjuntamos el archivo
+                                                // Opcional: añadimos un texto descriptivo
+                                                putExtra(Intent.EXTRA_TEXT, "Grabación de Radio Fides: ${marcador.customName}")
+                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            }
+                                            context.startActivity(Intent.createChooser(shareIntent, "Compartir audio vía..."))
+                                        } else {
+                                            Toast.makeText(context, "El archivo de audio no existe", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Error al intentar compartir", Toast.LENGTH_SHORT).show()
                                     }
-                                    val shareIntent = Intent.createChooser(sendIntent, null)
-                                    context.startActivity(shareIntent)
                                 }) {
-                                    Icon(Icons.Default.Share, contentDescription = "Compartir", tint = MaterialTheme.colorScheme.secondary)
+                                    Icon(Icons.Default.Share, contentDescription = "Compartir Audio", tint = MaterialTheme.colorScheme.secondary)
                                 }
 
                                 // BOTÓN ELIMINAR

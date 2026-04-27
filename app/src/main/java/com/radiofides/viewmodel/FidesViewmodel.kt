@@ -48,13 +48,13 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     // --- ESTADOS DE LA INTERFAZ ---
     var isBuffering by mutableStateOf(false)
     var isPlaying by mutableStateOf(false)
-    
-    // [APRENDIZAJE] Metadata dinámica (JSON)
+
+    // Metadata dinámica (JSON)
     var currentTitle by mutableStateOf("Radio Fides")
     var currentArtist by mutableStateOf("La voz que camina con el pueblo")
     var currentImageUrl by mutableStateOf<String?>(null)
 
-    // [NUEVO] ESTADOS DEL CRONOGRAMA
+    // ESTADOS DEL CRONOGRAMA
     var currentProgram by mutableStateOf(ScheduleProvider.getCurrentProgram())
 
     // --- ESTADOS DE GRABACIÓN ---
@@ -62,7 +62,7 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     var nuevoNombreMarcador by mutableStateOf("")
     var isRecording by mutableStateOf(false)
     var contadorNuevasGrabaciones by mutableStateOf(0)
-    
+
     private var recordingJob: Job? = null
     private var currentRecordingTimestamp: Long = 0
 
@@ -73,11 +73,35 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- GESTIÓN DE INTERNET ---
     var isNetworkAvailable by mutableStateOf(true)
-    private val connectivityManager = application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    private val connectivityManager =
+        application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
+    // [CORREGIDO] El NetworkCallback puede ser llamado desde hilos de sistema.
+    // Usamos viewModelScope.launch para actualizar el estado en el hilo principal.
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) { isNetworkAvailable = true }
-        override fun onLost(network: Network) { isNetworkAvailable = false }
+        override fun onAvailable(network: Network) {
+            viewModelScope.launch(Dispatchers.Main) {
+                isNetworkAvailable = true
+            }
+        }
+
+        override fun onLost(network: Network) {
+            viewModelScope.launch(Dispatchers.Main) {
+                isNetworkAvailable = false
+            }
+        }
+
+        // [NUEVO] onCapabilitiesChanged es más confiable que onAvailable en algunos dispositivos
+        override fun onCapabilitiesChanged(
+            network: Network,
+            networkCapabilities: NetworkCapabilities
+        ) {
+            val hasInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                    networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            viewModelScope.launch(Dispatchers.Main) {
+                isNetworkAvailable = hasInternet
+            }
+        }
     }
 
     // --- PLAYLIST ---
@@ -97,38 +121,50 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         checkInitialNetwork()
         registerNetworkCallback()
 
-        val sessionToken = SessionToken(application, ComponentName(application, FidesMediaService::class.java))
+        val sessionToken =
+            SessionToken(application, ComponentName(application, FidesMediaService::class.java))
         val controllerFuture = MediaController.Builder(application, sessionToken).buildAsync()
 
         controllerFuture.addListener({
             try {
                 browser = controllerFuture.get()
                 browser?.addListener(object : Player.Listener {
-                    override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
-                    override fun onPlaybackStateChanged(state: Int) { isBuffering = (state == Player.STATE_BUFFERING) }
+                    override fun onIsPlayingChanged(playing: Boolean) {
+                        isPlaying = playing
+                        // Si se detiene la reproducción, detener grabación automáticamente
+                        if (!playing && isRecording) {
+                            viewModelScope.launch { iniciarDetenerGrabacion() }
+                        }
+                    }
+
+                    override fun onPlaybackStateChanged(state: Int) {
+                        isBuffering = (state == Player.STATE_BUFFERING)
+                    }
                 })
                 fetchMetadata()
                 autoPlay()
             } catch (e: Exception) {
-                Log.e("FidesVM", "Error conexión: ${e.message}")
+                Log.e("FidesVM", "Error conexión MediaController: ${e.message}")
             }
         }, MoreExecutors.directExecutor())
 
         startMetadataRefresh()
-        startScheduleRefresh() // [NUEVO] Iniciamos el refresco del cronograma
-        
-        if (!folderGrabaciones.exists()) { folderGrabaciones.mkdirs() }
+        startScheduleRefresh()
+
+        if (!folderGrabaciones.exists()) {
+            folderGrabaciones.mkdirs()
+        }
         cargarPlaylist()
     }
 
     /**
-     * [APRENDIZAJE] Esta función actualiza el programa actual cada minuto.
+     * Actualiza el programa actual cada minuto.
      */
     private fun startScheduleRefresh() {
         viewModelScope.launch {
             while (true) {
                 currentProgram = ScheduleProvider.getCurrentProgram()
-                delay(60000) // Revisamos cada minuto
+                delay(60_000L)
             }
         }
     }
@@ -139,6 +175,15 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val url = URL("$METADATA_URL?t=${System.currentTimeMillis()}")
                 val connection = url.openConnection() as HttpURLConnection
+                connection.connectTimeout = 8_000
+                connection.readTimeout = 8_000
+                connection.connect()
+
+                if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+                    Log.w("FidesVM", "Metadata: respuesta ${connection.responseCode}")
+                    return@launch
+                }
+
                 val jsonText = connection.inputStream.bufferedReader().readText()
                 val root = JSONObject(jsonText)
                 val results = root.optJSONArray("result")
@@ -148,15 +193,14 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     withContext(Dispatchers.Main) {
                         val title = current.optString("track_title", "Radio Fides")
                         val artist = current.optString("track_artist", "La voz que camina con el pueblo")
-                        
+
                         if (BLACKLIST.any { title.contains(it, true) || artist.contains(it, true) }) {
                             resetToDefaultMetadata()
                         } else {
                             currentTitle = title
                             currentArtist = artist
                             currentImageUrl = current.optString("track_image", "").ifEmpty { null }
-                            
-                            // Solo actualizamos la sesión de medios si el programa es musical
+
                             if (currentProgram.isMusical) {
                                 updateMediaSession(currentTitle, currentArtist, currentImageUrl)
                             } else {
@@ -165,7 +209,9 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
                 }
-            } catch (e: Exception) { Log.e("FidesVM", "Error JSON") }
+            } catch (e: Exception) {
+                Log.e("FidesVM", "Error obteniendo metadata: ${e.message}")
+            }
         }
     }
 
@@ -179,7 +225,7 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     private fun startMetadataRefresh() {
         viewModelScope.launch {
             while (true) {
-                delay(20000)
+                delay(20_000L)
                 if (isNetworkAvailable) fetchMetadata()
             }
         }
@@ -187,16 +233,25 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun updateMediaSession(title: String, artist: String, image: String?) {
         browser?.let { controller ->
-            val logoUri = "android.resource://${getApplication<Application>().packageName}/${R.drawable.logo_fides_oficial}".toUri()
-            val metadata = MediaMetadata.Builder().setTitle(title).setArtist(artist)
-                .setArtworkUri(if (!image.isNullOrEmpty()) image.toUri() else logoUri).build()
-            val currentItem = controller.currentMediaItem?.buildUpon()?.setMediaMetadata(metadata)?.build()
-            if (currentItem != null) controller.replaceMediaItem(0, currentItem)
+            val logoUri =
+                "android.resource://${getApplication<Application>().packageName}/${R.drawable.logo_fides_oficial}".toUri()
+            val metadata = MediaMetadata.Builder()
+                .setTitle(title)
+                .setArtist(artist)
+                .setArtworkUri(if (!image.isNullOrEmpty()) image.toUri() else logoUri)
+                .build()
+            val currentItem = controller.currentMediaItem?.buildUpon()
+                ?.setMediaMetadata(metadata)?.build()
+            if (currentItem != null) {
+                controller.replaceMediaItem(0, currentItem)
+            }
         }
     }
 
     // --- CONTROLES DE AUDIO ---
-    fun togglePlayPause() { browser?.let { if (isPlaying) it.pause() else playStream() } }
+    fun togglePlayPause() {
+        browser?.let { if (isPlaying) it.pause() else playStream() }
+    }
 
     private fun playStream() {
         if (!isNetworkAvailable) return
@@ -208,22 +263,32 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // --- Dentro de FidesViewModel.kt ---
+
+    private var yaHizoAutoPlay = false // Variable privada para control interno
+
     fun autoPlay() {
+        // Si ya lo hizo una vez, salimos de la función y no hacemos nada
+        if (yaHizoAutoPlay) return
+
         viewModelScope.launch {
             while (browser == null) delay(100)
-            if (!isPlaying && isNetworkAvailable) playStream()
+            if (!isPlaying && isNetworkAvailable) {
+                playStream()
+                yaHizoAutoPlay = true // Marcamos que ya se ejecutó el primer arranque
+            }
         }
     }
 
     // --- LÓGICA DEL TEMPORIZADOR ---
     fun programarApagado(minutos: Int) {
-        sleepJob?.cancel() 
+        sleepJob?.cancel()
         tiempoTemporizador = minutos * 60
         showSleepDialog = false
         if (minutos > 0) {
             sleepJob = viewModelScope.launch {
                 while (tiempoTemporizador > 0) {
-                    delay(1000)
+                    delay(1_000L)
                     tiempoTemporizador--
                 }
                 browser?.pause()
@@ -234,25 +299,39 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     // --- LÓGICA DE GRABACIÓN ---
     fun iniciarDetenerGrabacion() {
         if (!isRecording) {
-            if (!isPlaying) return 
+            if (!isPlaying) return
             isRecording = true
             currentRecordingTimestamp = System.currentTimeMillis()
             startAudioRecording(currentRecordingTimestamp)
         } else {
             isRecording = false
             recordingJob?.cancel()
-            showSaveDialog = true 
+            showSaveDialog = true
         }
     }
 
     private fun startAudioRecording(timestamp: Long) {
         recordingJob = viewModelScope.launch(Dispatchers.IO) {
             try {
+                // [CORREGIDO] Verificar espacio disponible antes de grabar
+                val espacioLibre = folderGrabaciones.freeSpace
+                if (espacioLibre < 50 * 1024 * 1024) { // Menos de 50MB libre
+                    Log.w("FidesVM", "Espacio insuficiente para grabar")
+                    withContext(Dispatchers.Main) {
+                        isRecording = false
+                        showSaveDialog = false
+                    }
+                    return@launch
+                }
+
                 val audioFile = File(folderGrabaciones, "audio_$timestamp.mp3")
                 val url = URL(STREAM_URL)
-                val connection = url.openConnection()
+                val connection = url.openConnection() as HttpURLConnection
+                connection.connectTimeout = 10_000
+                connection.readTimeout = 30_000
                 connection.connect()
-                connection.getInputStream().use { input ->
+
+                connection.inputStream.use { input ->
                     FileOutputStream(audioFile).use { output ->
                         val buffer = ByteArray(8192)
                         var bytesRead: Int
@@ -264,7 +343,10 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { isRecording = false }
+                Log.e("FidesVM", "Error en grabación: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    isRecording = false
+                }
             }
         }
     }
@@ -273,17 +355,29 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val timestamp = currentRecordingTimestamp
-                val nuevoMarcador = SavedBookmark(nombreElegido, currentTitle, currentArtist, currentImageUrl, timestamp)
+                val nuevoMarcador = SavedBookmark(
+                    nombreElegido, currentTitle, currentArtist, currentImageUrl, timestamp
+                )
                 val archivoTxt = File(folderGrabaciones, "grabacion_$timestamp.txt")
-                archivoTxt.writeText("${nuevoMarcador.customName}|${nuevoMarcador.title}|${nuevoMarcador.artist}|${nuevoMarcador.imageUrl}")
+                // [CORREGIDO] Escapar el separador "|" en los campos por si el título lo contiene
+                val contenido = listOf(
+                    nuevoMarcador.customName.replace("|", "/"),
+                    nuevoMarcador.title.replace("|", "/"),
+                    nuevoMarcador.artist.replace("|", "/"),
+                    nuevoMarcador.imageUrl ?: "null"
+                ).joinToString("|")
+                archivoTxt.writeText(contenido)
+
                 withContext(Dispatchers.Main) {
-                    playlist = (listOf(nuevoMarcador) + playlist)
+                    playlist = listOf(nuevoMarcador) + playlist
                     showSaveDialog = false
                     nuevoNombreMarcador = ""
-                    isRecording = false 
+                    isRecording = false
                     contadorNuevasGrabaciones++
                 }
-            } catch (e: Exception) { }
+            } catch (e: Exception) {
+                Log.e("FidesVM", "Error guardando en playlist: ${e.message}")
+            }
         }
     }
 
@@ -296,10 +390,21 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                         try {
                             val datos = archivo.readText().split("|")
                             if (datos.size >= 4) {
-                                val timestamp = archivo.name.removePrefix("grabacion_").removeSuffix(".txt").toLong()
-                                listaTemporal.add(SavedBookmark(datos[0], datos[1], datos[2], if (datos[3] == "null") null else datos[3], timestamp))
+                                val timestamp = archivo.name
+                                    .removePrefix("grabacion_")
+                                    .removeSuffix(".txt")
+                                    .toLong()
+                                listaTemporal.add(
+                                    SavedBookmark(
+                                        datos[0], datos[1], datos[2],
+                                        if (datos[3] == "null") null else datos[3],
+                                        timestamp
+                                    )
+                                )
                             }
-                        } catch (e: Exception) { }
+                        } catch (e: Exception) {
+                            Log.e("FidesVM", "Error leyendo grabación: ${archivo.name}")
+                        }
                     }
                 }
             }
@@ -324,11 +429,15 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     private fun checkInitialNetwork() {
         val activeNetwork = connectivityManager.activeNetwork
         val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-        isNetworkAvailable = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        isNetworkAvailable =
+            capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true &&
+                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
     private fun registerNetworkCallback() {
-        val request = NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build()
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
         connectivityManager.registerNetworkCallback(request, networkCallback)
     }
 

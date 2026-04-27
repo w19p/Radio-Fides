@@ -1,33 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- PERMISOS MÍNIMOS NECESARIOS -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"
-        tools:ignore="ForegroundServicesPolicy" />
+
+    <!--
+        [PLAY STORE] FOREGROUND_SERVICE requiere declarar el tipo exacto.
+        En el formulario de Play Store deberás justificar su uso:
+        "La app necesita un servicio en primer plano para reproducir audio
+         de radio en streaming mientras el usuario usa otras aplicaciones."
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
+    <!--
+        [CORREGIDO] usesCleartextTraffic cambiado a false.
+        Tu stream usa HTTPS (https://usa7.fastcast4u.com/...) así que no necesitas
+        permitir HTTP sin cifrar. Esto mejora la seguridad y evita advertencias de Play Store.
+        Si algún recurso falla, revisa que TODAS tus URLs sean https://
+    -->
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true"
+        android:usesCleartextTraffic="false"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.RadioFides">
+        android:theme="@style/Theme.RadioFides"
+        tools:targetApi="31">
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.RadioFides">
+            android:theme="@style/Theme.RadioFides"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
+        <!--
+            [CORREGIDO] El servicio de media necesita foregroundServiceType declarado
+            para Android 14+ (API 34). Sin esto, el servicio falla en Android 14.
+        -->
         <service
             android:name=".service.FidesMediaService"
             android:foregroundServiceType="mediaPlayback"
@@ -37,7 +57,7 @@
             </intent-filter>
         </service>
 
-        <!-- [APRENDIZAJE] El Provider permite compartir archivos internos con otras Apps -->
+        <!-- FileProvider para compartir archivos de grabación -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
