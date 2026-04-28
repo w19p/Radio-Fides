@@ -88,18 +88,35 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         override fun onLost(network: Network) {
             viewModelScope.launch(Dispatchers.Main) {
                 isNetworkAvailable = false
+                // CORRECCIÓN: si se pierde la red mientras se grababa,
+                // detenemos la grabación inmediatamente en lugar de
+                // esperar hasta 30 segundos a que el readTimeout expire.
+                if (isRecording) {
+                    isRecording = false
+                    recordingJob?.cancel()
+                    showSaveDialog = false // No tiene sentido guardar una grabación cortada
+                }
             }
         }
 
-        // [NUEVO] onCapabilitiesChanged es más confiable que onAvailable en algunos dispositivos
         override fun onCapabilitiesChanged(
             network: Network,
             networkCapabilities: NetworkCapabilities
         ) {
-            val hasInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                    networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            val hasInternet =
+                networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                        networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
             viewModelScope.launch(Dispatchers.Main) {
-                isNetworkAvailable = hasInternet
+                // CORRECCIÓN: solo actuamos si el estado realmente cambió
+                // para evitar actualizaciones innecesarias de la UI
+                if (isNetworkAvailable != hasInternet) {
+                    isNetworkAvailable = hasInternet
+                    if (!hasInternet && isRecording) {
+                        isRecording = false
+                        recordingJob?.cancel()
+                        showSaveDialog = false
+                    }
+                }
             }
         }
     }
@@ -435,15 +452,33 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun registerNetworkCallback() {
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-        connectivityManager.registerNetworkCallback(request, networkCallback)
+        try {
+            val request = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            connectivityManager.registerNetworkCallback(request, networkCallback)
+        } catch (e: SecurityException) {
+            // En algunos dispositivos el permiso puede no estar listo aún.
+            // Si falla el callback, al menos dejamos el estado inicial correcto
+            // con checkInitialNetwork() que ya se llamó antes en el init{}.
+            Log.e("FidesVM", "No se pudo registrar NetworkCallback: ${e.message}")
+        } catch (e: RuntimeException) {
+            // Capturamos RuntimeException también porque algunos fabricantes
+            // (Huawei, Xiaomi) lanzan excepciones propias que extienden RuntimeException
+            Log.e("FidesVM", "Error inesperado al registrar NetworkCallback: ${e.message}")
+        }
     }
 
     override fun onCleared() {
         super.onCleared()
-        connectivityManager.unregisterNetworkCallback(networkCallback)
+        // CORRECCIÓN: también protegemos el unregister con try/catch
+        // porque si el register falló, el unregister también fallará
+        // y causaría un segundo crash al cerrar la app
+        try {
+            connectivityManager.unregisterNetworkCallback(networkCallback)
+        } catch (e: RuntimeException) {
+            Log.e("FidesVM", "Error al desregistrar NetworkCallback: ${e.message}")
+        }
         browser?.release()
     }
 }
