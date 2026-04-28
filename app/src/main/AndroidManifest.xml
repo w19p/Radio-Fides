@@ -2,18 +2,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- PERMISOS MÍNIMOS NECESARIOS -->
+    <!-- ANTES de la etiqueta <application> -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-    <!--
-        [PLAY STORE] FOREGROUND_SERVICE requiere declarar el tipo exacto.
-        En el formulario de Play Store deberás justificar su uso:
-        "La app necesita un servicio en primer plano para reproducir audio
-         de radio en streaming mientras el usuario usa otras aplicaciones."
-    -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+    <!-- NUEVO — Solo necesario en Android 9 y anteriores -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <!--
         [CORREGIDO] usesCleartextTraffic cambiado a false.
@@ -23,6 +24,7 @@
     -->
     <application
         android:allowBackup="true"
+        android:requestLegacyExternalStorage="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"

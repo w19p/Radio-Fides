@@ -1,19 +1,26 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
--->
+<?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
-    <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
-    </cloud-backup>
+
     <!--
-    <device-transfer>
-        <include .../>
-        <exclude .../>
-    </device-transfer>
+        CLOUD BACKUP (Google Drive):
+        Excluimos las grabaciones del respaldo en la nube.
+        Los archivos MP3 pueden ser muy pesados.
     -->
+    <cloud-backup>
+        <exclude
+            domain="file"
+            path="Grabaciones radio fides/" />
+    </cloud-backup>
+
+    <!--
+        DEVICE TRANSFER (cuando el usuario cambia de teléfono):
+        Tampoco transferimos las grabaciones al nuevo dispositivo.
+        Son capturas temporales de radio en vivo.
+    -->
+    <device-transfer>
+        <exclude
+            domain="file"
+            path="Grabaciones radio fides/" />
+    </device-transfer>
+
 </data-extraction-rules>

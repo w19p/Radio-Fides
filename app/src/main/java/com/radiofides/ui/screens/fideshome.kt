@@ -117,10 +117,6 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
         }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.autoPlay()
-    }
-
     var currentTime by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
         while (true) {
@@ -130,25 +126,33 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
         }
     }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "live_pulse")
+    // DESPUÉS — Un solo motor para las 3 animaciones
+    val infiniteTransition = rememberInfiniteTransition(label = "fides_pulse")
+
     val alpha by infiniteTransition.animateFloat(
         initialValue = 0.3f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(animation = tween(1000, easing = LinearEasing), repeatMode = RepeatMode.Reverse),
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
         label = "live_alpha"
     )
 
-    val recordingTransition = rememberInfiniteTransition(label = "recording_pulse")
-    val recordingAlpha by recordingTransition.animateFloat(
+    val recordingAlpha by infiniteTransition.animateFloat(
         initialValue = 1f, targetValue = 0.3f,
-        animationSpec = infiniteRepeatable(animation = tween(800, easing = LinearEasing), repeatMode = RepeatMode.Reverse),
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
         label = "recording_alpha"
     )
 
-    val sleepTransition = rememberInfiniteTransition(label = "sleep_pulse")
-    val sleepAlpha by sleepTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.4f,
-        animationSpec = infiniteRepeatable(animation = tween(1000), repeatMode = RepeatMode.Reverse),
+    val sleepAlpha by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 0.4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000),
+            repeatMode = RepeatMode.Reverse
+        ),
         label = "sleep_alpha"
     )
     //variable del scroll

@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <!-- [APRENDIZAJE] Esto da acceso a la carpeta interna donde guardamos los MP3 -->
-    <files-path name="grabaciones" path="Grabaciones radio fides/" />
+    <!-- Archivos .txt privados -->
+    <files-path name="grabaciones_metadata" path="Grabaciones radio fides/" />
+
+    <!-- Archivos .mp3 en Music público — ruta completa desde raíz -->
+    <external-path name="grabaciones_audio" path="." />
 </paths>

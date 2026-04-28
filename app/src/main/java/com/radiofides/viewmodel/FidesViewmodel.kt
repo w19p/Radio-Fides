@@ -7,6 +7,8 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.os.Build
+import android.os.Environment
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.compose.runtime.getValue
@@ -36,12 +38,14 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
-// --- CONFIGURACIÓN GLOBAL ---
-const val METADATA_URL = "https://api.instant.audio/data/playlist/43/radio-fides"
-val BLACKLIST = listOf("Bilirrubina", "Bomba Estereo")
 
 @OptIn(UnstableApi::class)
 class FidesViewModel(application: Application) : AndroidViewModel(application) {
+
+    companion object {
+        private const val METADATA_URL = "https://api.instant.audio/data/playlist/43/radio-fides"
+        private val BLACKLIST = listOf("Bilirrubina", "Bomba Estereo")
+    }
 
     private var browser: MediaController? = null
 
@@ -49,35 +53,32 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     var isBuffering by mutableStateOf(false)
     var isPlaying by mutableStateOf(false)
 
-    // Metadata dinámica (JSON)
+    // --- METADATA ---
     var currentTitle by mutableStateOf("Radio Fides")
     var currentArtist by mutableStateOf("La voz que camina con el pueblo")
     var currentImageUrl by mutableStateOf<String?>(null)
 
-    // ESTADOS DEL CRONOGRAMA
+    // --- CRONOGRAMA ---
     var currentProgram by mutableStateOf(ScheduleProvider.getCurrentProgram())
 
-    // --- ESTADOS DE GRABACIÓN ---
+    // --- GRABACIÓN ---
     var showSaveDialog by mutableStateOf(false)
     var nuevoNombreMarcador by mutableStateOf("")
     var isRecording by mutableStateOf(false)
     var contadorNuevasGrabaciones by mutableStateOf(0)
-
     private var recordingJob: Job? = null
     private var currentRecordingTimestamp: Long = 0
 
-    // --- ESTADOS PARA EL TEMPORIZADOR (SLEEP TIMER) ---
+    // --- TEMPORIZADOR ---
     var tiempoTemporizador by mutableStateOf(0)
     var showSleepDialog by mutableStateOf(false)
     private var sleepJob: Job? = null
 
-    // --- GESTIÓN DE INTERNET ---
+    // --- RED ---
     var isNetworkAvailable by mutableStateOf(true)
     private val connectivityManager =
         application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-    // [CORREGIDO] El NetworkCallback puede ser llamado desde hilos de sistema.
-    // Usamos viewModelScope.launch para actualizar el estado en el hilo principal.
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             viewModelScope.launch(Dispatchers.Main) {
@@ -88,13 +89,10 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         override fun onLost(network: Network) {
             viewModelScope.launch(Dispatchers.Main) {
                 isNetworkAvailable = false
-                // CORRECCIÓN: si se pierde la red mientras se grababa,
-                // detenemos la grabación inmediatamente en lugar de
-                // esperar hasta 30 segundos a que el readTimeout expire.
                 if (isRecording) {
                     isRecording = false
                     recordingJob?.cancel()
-                    showSaveDialog = false // No tiene sentido guardar una grabación cortada
+                    showSaveDialog = false
                 }
             }
         }
@@ -107,8 +105,6 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                 networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                         networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
             viewModelScope.launch(Dispatchers.Main) {
-                // CORRECCIÓN: solo actuamos si el estado realmente cambió
-                // para evitar actualizaciones innecesarias de la UI
                 if (isNetworkAvailable != hasInternet) {
                     isNetworkAvailable = hasInternet
                     if (!hasInternet && isRecording) {
@@ -121,10 +117,43 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // --- ALMACENAMIENTO ---
+    // Carpeta privada — solo para archivos .txt de metadata
+    // Vive en filesDir, se borra al desinstalar
+    private val folderMetadata = File(application.filesDir, "Grabaciones radio fides")
+
+    // Carpeta pública — solo para archivos .mp3
+    // Vive en Music/Radio Fides/, sobrevive la desinstalación
+    private val folderMusica: File =
+        File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC),
+            "Radio Fides"
+        )
+
+    // CORRECCIÓN: En Android 10+ no se necesita permiso para escribir en Music
+    // En Android 9 y anteriores se pide en MainActivity
+    var tienePermisoAlmacenamiento by mutableStateOf(
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+    )
+        private set
+
+    fun onStoragePermissionResult(granted: Boolean) {
+        tienePermisoAlmacenamiento = granted
+        if (granted && !folderMusica.exists()) {
+            folderMusica.mkdirs()
+        }
+    }
+
+    // Funciones helper — la UI nunca construye rutas directamente
+    fun getAudioFile(timestamp: Long): File =
+        File(folderMusica, "audio_$timestamp.mp3")
+
+    fun getTxtFile(timestamp: Long): File =
+        File(folderMetadata, "grabacion_$timestamp.txt")
+
     // --- PLAYLIST ---
     var playlist by mutableStateOf<List<SavedBookmark>>(emptyList())
         private set
-    val folderGrabaciones = File(application.filesDir, "Grabaciones radio fides")
 
     data class SavedBookmark(
         val customName: String,
@@ -133,6 +162,17 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         val imageUrl: String?,
         val timestamp: Long
     )
+
+    // --- AUTO PLAY ---
+    private var yaHizoAutoPlay = false
+
+    fun autoPlay() {
+        if (yaHizoAutoPlay) return
+        if (!isPlaying && isNetworkAvailable) {
+            playStream()
+            yaHizoAutoPlay = true
+        }
+    }
 
     init {
         checkInitialNetwork()
@@ -143,40 +183,45 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         val controllerFuture = MediaController.Builder(application, sessionToken).buildAsync()
 
         controllerFuture.addListener({
-            try {
-                browser = controllerFuture.get()
-                browser?.addListener(object : Player.Listener {
-                    override fun onIsPlayingChanged(playing: Boolean) {
-                        isPlaying = playing
-                        // Si se detiene la reproducción, detener grabación automáticamente
-                        if (!playing && isRecording) {
-                            viewModelScope.launch { iniciarDetenerGrabacion() }
+            viewModelScope.launch(Dispatchers.Main) {
+                try {
+                    browser = controllerFuture.get()
+                    browser?.addListener(object : Player.Listener {
+                        override fun onIsPlayingChanged(playing: Boolean) {
+                            isPlaying = playing
+                            if (!playing && isRecording) {
+                                viewModelScope.launch { iniciarDetenerGrabacion() }
+                            }
                         }
-                    }
-
-                    override fun onPlaybackStateChanged(state: Int) {
-                        isBuffering = (state == Player.STATE_BUFFERING)
-                    }
-                })
-                fetchMetadata()
-                autoPlay()
-            } catch (e: Exception) {
-                Log.e("FidesVM", "Error conexión MediaController: ${e.message}")
+                        override fun onPlaybackStateChanged(state: Int) {
+                            isBuffering = (state == Player.STATE_BUFFERING)
+                        }
+                    })
+                    fetchMetadata()
+                    autoPlay()
+                } catch (e: Exception) {
+                    Log.e("FidesVM", "Error conexión MediaController: ${e.message}")
+                }
             }
         }, MoreExecutors.directExecutor())
 
         startMetadataRefresh()
         startScheduleRefresh()
 
-        if (!folderGrabaciones.exists()) {
-            folderGrabaciones.mkdirs()
+        // CORRECCIÓN: solo creamos folderMetadata aquí en el init
+        // folderMusica se crea en onStoragePermissionResult() cuando
+        // tengamos el permiso confirmado — evita el EPERM en Android 9
+        if (!folderMetadata.exists()) folderMetadata.mkdirs()
+
+        // En Android 10+ creamos la carpeta pública directamente
+        // porque no necesitamos permiso
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (!folderMusica.exists()) folderMusica.mkdirs()
         }
+
         cargarPlaylist()
     }
 
-    /**
-     * Actualiza el programa actual cada minuto.
-     */
     private fun startScheduleRefresh() {
         viewModelScope.launch {
             while (true) {
@@ -186,7 +231,6 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- LÓGICA DE METADATA (JSON) ---
     fun fetchMetadata() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -209,19 +253,27 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     val current = results.getJSONObject(0)
                     withContext(Dispatchers.Main) {
                         val title = current.optString("track_title", "Radio Fides")
-                        val artist = current.optString("track_artist", "La voz que camina con el pueblo")
-
-                        if (BLACKLIST.any { title.contains(it, true) || artist.contains(it, true) }) {
+                        val artist = current.optString(
+                            "track_artist",
+                            "La voz que camina con el pueblo"
+                        )
+                        if (BLACKLIST.any {
+                                title.contains(it, true) || artist.contains(it, true)
+                            }) {
                             resetToDefaultMetadata()
                         } else {
                             currentTitle = title
                             currentArtist = artist
-                            currentImageUrl = current.optString("track_image", "").ifEmpty { null }
-
+                            currentImageUrl =
+                                current.optString("track_image", "").ifEmpty { null }
                             if (currentProgram.isMusical) {
                                 updateMediaSession(currentTitle, currentArtist, currentImageUrl)
                             } else {
-                                updateMediaSession(currentProgram.name, currentProgram.conductor, null)
+                                updateMediaSession(
+                                    currentProgram.name,
+                                    currentProgram.conductor,
+                                    null
+                                )
                             }
                         }
                     }
@@ -265,9 +317,12 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- CONTROLES DE AUDIO ---
     fun togglePlayPause() {
         browser?.let { if (isPlaying) it.pause() else playStream() }
+    }
+
+    fun pausarRadio() {
+        browser?.pause()
     }
 
     private fun playStream() {
@@ -280,24 +335,6 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- Dentro de FidesViewModel.kt ---
-
-    private var yaHizoAutoPlay = false // Variable privada para control interno
-
-    fun autoPlay() {
-        // Si ya lo hizo una vez, salimos de la función y no hacemos nada
-        if (yaHizoAutoPlay) return
-
-        viewModelScope.launch {
-            while (browser == null) delay(100)
-            if (!isPlaying && isNetworkAvailable) {
-                playStream()
-                yaHizoAutoPlay = true // Marcamos que ya se ejecutó el primer arranque
-            }
-        }
-    }
-
-    // --- LÓGICA DEL TEMPORIZADOR ---
     fun programarApagado(minutos: Int) {
         sleepJob?.cancel()
         tiempoTemporizador = minutos * 60
@@ -313,7 +350,6 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- LÓGICA DE GRABACIÓN ---
     fun iniciarDetenerGrabacion() {
         if (!isRecording) {
             if (!isPlaying) return
@@ -330,9 +366,12 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     private fun startAudioRecording(timestamp: Long) {
         recordingJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                // [CORREGIDO] Verificar espacio disponible antes de grabar
-                val espacioLibre = folderGrabaciones.freeSpace
-                if (espacioLibre < 50 * 1024 * 1024) { // Menos de 50MB libre
+                val carpetaDestino =
+                    if (tienePermisoAlmacenamiento) folderMusica else folderMetadata
+                if (!carpetaDestino.exists()) carpetaDestino.mkdirs()
+
+                val espacioLibre = carpetaDestino.freeSpace
+                if (espacioLibre < 50 * 1024 * 1024) {
                     Log.w("FidesVM", "Espacio insuficiente para grabar")
                     withContext(Dispatchers.Main) {
                         isRecording = false
@@ -341,7 +380,10 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     return@launch
                 }
 
-                val audioFile = File(folderGrabaciones, "audio_$timestamp.mp3")
+                // CORRECCIÓN: el archivo de audio siempre va a carpetaDestino
+                // no usamos getAudioFile() aquí porque en Android 9 sin permiso
+                // carpetaDestino sería folderMetadata, no folderMusica
+                val audioFile = File(carpetaDestino, "audio_$timestamp.mp3")
                 val url = URL(STREAM_URL)
                 val connection = url.openConnection() as HttpURLConnection
                 connection.connectTimeout = 10_000
@@ -375,8 +417,7 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                 val nuevoMarcador = SavedBookmark(
                     nombreElegido, currentTitle, currentArtist, currentImageUrl, timestamp
                 )
-                val archivoTxt = File(folderGrabaciones, "grabacion_$timestamp.txt")
-                // [CORREGIDO] Escapar el separador "|" en los campos por si el título lo contiene
+                val archivoTxt = getTxtFile(timestamp) // ← siempre va a folderMetadata
                 val contenido = listOf(
                     nuevoMarcador.customName.replace("|", "/"),
                     nuevoMarcador.title.replace("|", "/"),
@@ -401,9 +442,11 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     private fun cargarPlaylist() {
         viewModelScope.launch(Dispatchers.IO) {
             val listaTemporal = mutableListOf<SavedBookmark>()
-            if (folderGrabaciones.exists()) {
-                folderGrabaciones.listFiles()?.forEach { archivo ->
-                    if (archivo.name.endsWith(".txt") && archivo.name.startsWith("grabacion_")) {
+            if (folderMetadata.exists()) {
+                folderMetadata.listFiles()?.forEach { archivo ->
+                    if (archivo.name.endsWith(".txt") &&
+                        archivo.name.startsWith("grabacion_")
+                    ) {
                         try {
                             val datos = archivo.readText().split("|")
                             if (datos.size >= 4) {
@@ -433,8 +476,8 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
 
     fun eliminarMarcador(marcador: SavedBookmark) {
         viewModelScope.launch(Dispatchers.IO) {
-            val archivoTxt = File(folderGrabaciones, "grabacion_${marcador.timestamp}.txt")
-            val archivoMp3 = File(folderGrabaciones, "audio_${marcador.timestamp}.mp3")
+            val archivoTxt = getTxtFile(marcador.timestamp)
+            val archivoMp3 = getAudioFile(marcador.timestamp)
             if (archivoTxt.exists()) archivoTxt.delete()
             if (archivoMp3.exists()) archivoMp3.delete()
             withContext(Dispatchers.Main) {
@@ -458,22 +501,14 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                 .build()
             connectivityManager.registerNetworkCallback(request, networkCallback)
         } catch (e: SecurityException) {
-            // En algunos dispositivos el permiso puede no estar listo aún.
-            // Si falla el callback, al menos dejamos el estado inicial correcto
-            // con checkInitialNetwork() que ya se llamó antes en el init{}.
             Log.e("FidesVM", "No se pudo registrar NetworkCallback: ${e.message}")
         } catch (e: RuntimeException) {
-            // Capturamos RuntimeException también porque algunos fabricantes
-            // (Huawei, Xiaomi) lanzan excepciones propias que extienden RuntimeException
             Log.e("FidesVM", "Error inesperado al registrar NetworkCallback: ${e.message}")
         }
     }
 
     override fun onCleared() {
         super.onCleared()
-        // CORRECCIÓN: también protegemos el unregister con try/catch
-        // porque si el register falló, el unregister también fallará
-        // y causaría un segundo crash al cerrar la app
         try {
             connectivityManager.unregisterNetworkCallback(networkCallback)
         } catch (e: RuntimeException) {
