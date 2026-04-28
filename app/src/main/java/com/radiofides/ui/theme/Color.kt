@@ -62,3 +62,11 @@ val MentaClaroBottom = Color(0xFFDCFCE7)
 // OPCIÓN D: BLANCO HUESO (El más clásico)
 val BlancoHuesoTop = Color(0xFFFFFFFF)
 val BlancoHuesoBottom = Color(0xFFF1F1F1)
+
+val VerdeOscuro = Color(0xFF1F5A23)
+val VerdeClaro = Color(0xFF2E7D32)
+val VerdeMenta = Color(0xFF4CC790)
+val VerdePino = Color(0xFF7BB52E)
+
+
+

@@ -24,8 +24,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.AlertDialog
@@ -48,6 +50,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +61,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -74,6 +78,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.radiofides.R
+import com.radiofides.ui.theme.VerdeClaro
+import com.radiofides.ui.theme.VerdeMenta
+import com.radiofides.ui.theme.VerdeOscuro
+import com.radiofides.ui.theme.VerdePino
 import com.radiofides.viewmodel.FidesViewModel
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -143,11 +151,19 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
         animationSpec = infiniteRepeatable(animation = tween(1000), repeatMode = RepeatMode.Reverse),
         label = "sleep_alpha"
     )
+    //variable del scroll
+
+    val scrollState = rememberScrollState()
+
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(text = "", fontWeight = FontWeight.Black) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = VerdePino, // fondo
+                    titleContentColor = MaterialTheme.colorScheme.background     // color del texto
+                ),
                 navigationIcon = {
                     Box {
                         Column(
@@ -159,17 +175,19 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_enlaces),
                                 contentDescription = null,
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.onBackground
                             )
                             Text(
                                 text = "ENLACES",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.ExtraBold
-                                )
+                                ),
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                         }
-                        
+
                         DropdownMenu(
                             expanded = showSocialMenu,
                             onDismissRequest = { showSocialMenu = false },
@@ -236,9 +254,10 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                                 .clickable { navController.navigate("schedule") }
                         ) {
                             Icon(
-                                imageVector = Icons.Default.DateRange, 
+                                imageVector = Icons.Default.DateRange,
                                 contentDescription = null,
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.onBackground
                             )
                             Text(
                                 text = "PROGRAMACIÓN",
@@ -268,9 +287,10 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                                 }
                             ) {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_playlist), 
+                                    painter = painterResource(id = R.drawable.ic_playlist),
                                     contentDescription = null,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onBackground
                                 )
                             }
                             Text(
@@ -287,9 +307,9 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
         }
     ) { paddingValues ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(paddingValues).background(MaterialTheme.colorScheme.surface),
+            modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(paddingValues).background(MaterialTheme.colorScheme.surface),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceEvenly
+            verticalArrangement = Arrangement.Center
         ) {
             // --- SECCIÓN 1: El Logo con Fondo de Imagen ---
             ElevatedCard(    modifier = Modifier.size(280.dp),
@@ -298,16 +318,21 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                 colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 12.dp),
             ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    // [NUEVO] CAPA 1: Imagen de FONDO
-                    Image(
-                        painter = painterResource(id = R.drawable.fondofides), // <-- Tu imagen de fondo aquí
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop // Importante para que cubra todo el cuadro
-                    )
-
-                    // CAPA 2: Imagen del LOGO (Encima del fondo)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    VerdeOscuro,
+                                    VerdeClaro,
+                                    VerdeMenta
+                                ),
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // CAPA 1: Imagen del LOGO (Encima del fondo)
                     Image(
                         painter = painterResource(id = R.drawable.logo2),
                         contentDescription = "Logo Fides",
@@ -387,7 +412,7 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
 
                             // Contador del temporizador junto a la hora
                             if (viewModel.tiempoTemporizador > 0) {
-                                append("  ") 
+                                append("  ")
                                 withStyle(style = SpanStyle(fontWeight = FontWeight.Black, fontSize = 14.sp, color = Color.Red)) {
                                     append("⏲ $tiempoFormateado")
                                 }
@@ -402,7 +427,7 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                 // [FLUJO] Botón de GRABAR
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconButton(
-                        onClick = { if (isPlaying || viewModel.isRecording) { viewModel.iniciarDetenerGrabacion() } }, 
+                        onClick = { if (isPlaying || viewModel.isRecording) { viewModel.iniciarDetenerGrabacion() } },
                         enabled = isPlaying || viewModel.isRecording,
                         modifier = Modifier.size(48.dp).graphicsLayer(alpha = if (viewModel.isRecording) recordingAlpha else if (isPlaying) 1f else 0.5f).background(if (viewModel.isRecording) Color.Red else MaterialTheme.colorScheme.error.copy(alpha = if (isPlaying) 1f else 0.5f), CircleShape)
                     ) {
@@ -424,7 +449,7 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                 // [NUEVO] Botón de TEMPORIZADOR con color fijo y parpadeo
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconButton(
-                        onClick = { viewModel.showSleepDialog = true }, 
+                        onClick = { viewModel.showSleepDialog = true },
                         modifier = Modifier
                             .size(48.dp)
                             .graphicsLayer(alpha = if (viewModel.tiempoTemporizador > 0) sleepAlpha else 1f)
@@ -438,7 +463,7 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = if (viewModel.tiempoTemporizador > 0) tiempoFormateado else "DORMIR",
+                        text = if (viewModel.tiempoTemporizador > 0) tiempoFormateado else "APAGADO",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.graphicsLayer(alpha = if (viewModel.tiempoTemporizador > 0) sleepAlpha else 1f)
