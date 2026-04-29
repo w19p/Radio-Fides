@@ -22,21 +22,15 @@ fun NavGraph(viewModel: FidesViewModel) {
         composable("welcome") {
             WelcomeScreen(navController, viewModel)
         }
-
         composable("home") {
             FidesHome(viewModel, navController)
         }
-
         composable("no_internet") {
             NoInternetScreen(navController, viewModel)
         }
-
-        // [APRENDIZAJE] Añadimos la ruta "playlist" para que podamos navegar a la pantalla de grabaciones
         composable("playlist") {
             PlaylistScreen(viewModel, navController)
         }
-
-        // [APRENDIZAJE] Añadimos la ruta "schedule" para ver la programación completa
         composable("schedule") {
             ScheduleScreen(viewModel, navController)
         }

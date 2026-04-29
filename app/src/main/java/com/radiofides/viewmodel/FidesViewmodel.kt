@@ -295,7 +295,7 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             while (true) {
                 delay(20_000L)
-                if (isNetworkAvailable) fetchMetadata()
+                if (isNetworkAvailable && isPlaying) fetchMetadata()
             }
         }
     }

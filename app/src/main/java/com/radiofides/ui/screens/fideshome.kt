@@ -74,7 +74,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.radiofides.R
@@ -87,10 +86,11 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+// ELIMINAR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavController) {
+fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
     val isPlaying = viewModel.isPlaying
     val isNetworkAvailable = viewModel.isNetworkAvailable
     val context = LocalContext.current
@@ -117,14 +117,15 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
         }
     }
 
-    var currentTime by remember { mutableStateOf("") }
+    val timeFormatter = remember { SimpleDateFormat("HH:mm:ss a", Locale.getDefault()) }
+    var currentTime by remember { mutableStateOf(timeFormatter.format(Date())) }
     LaunchedEffect(Unit) {
         while (true) {
-            val formatter = SimpleDateFormat("HH:mm:ss a", Locale.getDefault())
-            currentTime = formatter.format(Date())
             delay(1000)
+            currentTime = timeFormatter.format(Date())
         }
     }
+
 
     // DESPUÉS — Un solo motor para las 3 animaciones
     val infiniteTransition = rememberInfiniteTransition(label = "fides_pulse")
@@ -518,14 +519,40 @@ fun FidesHome(viewModel: FidesViewModel = viewModel(), navController: NavControl
 
 @Composable
 fun AudioVisualizer(isPlaying: Boolean) {
-    Row(modifier = Modifier.height(30.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-        repeat(8) { i ->
-            val infiniteTransition = rememberInfiniteTransition(label = "")
-            val height by infiniteTransition.animateFloat(
-                initialValue = 0.1f, targetValue = if (isPlaying) 1f else 0.1f,
-                animationSpec = infiniteRepeatable(animation = tween(durationMillis = 400 + (i * 150), easing = FastOutSlowInEasing), repeatMode = RepeatMode.Reverse), label = ""
+    val infiniteTransition = rememberInfiniteTransition(label = "audio_visualizer")
+
+    val heights = (0 until 8).map { i ->
+        infiniteTransition.animateFloat(
+            initialValue = 0.1f,
+            targetValue = if (isPlaying) 1f else 0.1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(
+                    durationMillis = 400 + (i * 150),
+                    easing = FastOutSlowInEasing
+                ),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "bar_$i"
+        )
+    }
+
+    Row(
+        modifier = Modifier.height(30.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        heights.forEach { heightState ->
+            val height by heightState
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight(height)
+                    .background(
+                        color = if (isPlaying) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.outlineVariant,
+                        shape = RoundedCornerShape(2.dp)
+                    )
             )
-            Box(modifier = Modifier.width(4.dp).fillMaxHeight(height).background(color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, shape = RoundedCornerShape(2.dp)))
         }
     }
 }

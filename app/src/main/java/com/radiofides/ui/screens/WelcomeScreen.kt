@@ -25,11 +25,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -45,10 +46,10 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
-    var startLogoAnimation by remember { mutableStateOf(false) }
-    var startMessageAnimation by remember { mutableStateOf(false) }
 
-    // Obtenemos el estado de red del ViewModel
+    var startLogoAnimation by rememberSaveable { mutableStateOf(false) }
+    var startMessageAnimation by rememberSaveable { mutableStateOf(false) }
+
     val isNetworkAvailable = viewModel.isNetworkAvailable
 
     LaunchedEffect(Unit) {
@@ -58,10 +59,6 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
         startMessageAnimation = true
     }
 
-    // CORRECCIÓN: LaunchedEffect(Unit) en lugar de LaunchedEffect(isNetworkAvailable)
-    // Antes: si la red fluctuaba durante el splash, el delay se reiniciaba
-    // y el usuario podía quedar atrapado en la pantalla de bienvenida para siempre.
-    // Ahora: esperamos exactamente 3500ms y luego evaluamos el estado de red una sola vez.
     LaunchedEffect(Unit) {
         delay(3500)
         if (isNetworkAvailable) {
@@ -76,19 +73,7 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // [OPCIÓN 1] USAR FONDO AUTOMÁTICO (Claro u Oscuro según el sistema)
-             .background(MaterialTheme.colorScheme.background),
-
-            // [OPCIÓN 2] USAR DEGRADADO CON TUS COLORES DE "Color.kt"
-            /*.background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        // Aquí usamos las variables que creamos en ui/theme/Color.kt
-                        AzulNocheTop,    // Color superior claro
-                        AzulNocheBottom  // Color inferior claro
-                    )
-                )
-            ),*/
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -113,15 +98,16 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
                                         VerdeOscuro,
                                         VerdeClaro,
                                         VerdeMenta
-                                    ),
+                                    )
                                 )
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
                             painter = painterResource(id = R.drawable.logo2),
-                            contentDescription = "Logo",
-                            modifier = Modifier.size(160.dp)
+                            contentDescription = "Logo Radio Fides",
+                            modifier = Modifier.size(160.dp),
+                            contentScale = ContentScale.Fit
                         )
                     }
                 }
@@ -131,7 +117,8 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
 
             AnimatedVisibility(
                 visible = startMessageAnimation,
-                enter = slideInVertically(initialOffsetY = { 40 }) + fadeIn(animationSpec = tween(1000))
+                enter = slideInVertically(initialOffsetY = { 40 }) +
+                        fadeIn(animationSpec = tween(1000))
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
@@ -142,7 +129,6 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
                             letterSpacing = 2.sp
                         )
                     )
-
                     Text(
                         text = "La voz que camina con el pueblo",
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
@@ -152,7 +138,6 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
 
                     Spacer(modifier = Modifier.height(60.dp))
 
-                    // Mostramos él cargando mientras se decide la navegación
                     CircularProgressIndicator(
                         modifier = Modifier.size(30.dp),
                         color = MaterialTheme.colorScheme.primary,
@@ -160,7 +145,7 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
                     )
                     Text(
                         text = "Sintonizando...",
-                        color = MaterialTheme.colorScheme.onBackground,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         modifier = Modifier.padding(top = 10.dp),
                         style = MaterialTheme.typography.labelMedium
                     )
