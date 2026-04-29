@@ -15,14 +15,9 @@
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
-
-    <!--
-        [CORREGIDO] usesCleartextTraffic cambiado a false.
-        Tu stream usa HTTPS (https://usa7.fastcast4u.com/...) así que no necesitas
-        permitir HTTP sin cifrar. Esto mejora la seguridad y evita advertencias de Play Store.
-        Si algún recurso falla, revisa que TODAS tus URLs sean https://
-    -->
-    <!-- Android 11+ requiere declarar qué intents queremos consultar -->
+    <uses-permission
+        android:name="android.permission.ACCESS_MEDIA_LOCATION"
+        android:maxSdkVersion="28" />
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
@@ -56,11 +51,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!--
-            [CORREGIDO] El servicio de media necesita foregroundServiceType declarado
-            para Android 14+ (API 34). Sin esto, el servicio falla en Android 14.
-        -->
         <service
             android:name=".service.FidesMediaService"
             android:foregroundServiceType="mediaPlayback"
