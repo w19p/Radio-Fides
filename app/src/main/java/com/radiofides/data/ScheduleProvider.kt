@@ -2,6 +2,7 @@ package com.radiofides.data
 
 import com.radiofides.data.model.Program
 import java.util.Calendar
+import java.util.TimeZone
 
 object ScheduleProvider {
 
@@ -42,11 +43,13 @@ object ScheduleProvider {
         Program("20:30", "Cierre de Emisión")
     )
 
-    /**
-     * [APRENDIZAJE] Obtiene la lista completa de programas para el día de hoy.
-     */
+    // CORRECCIÓN: usamos la zona horaria de Bolivia explícitamente
+    // para que funcione igual sin importar dónde esté el dispositivo
+    private fun getBoliviaCalendar(): Calendar =
+        Calendar.getInstance(TimeZone.getTimeZone("America/La_Paz"))
+
     fun getTodaySchedule(): List<Program> {
-        val calendar = Calendar.getInstance()
+        val calendar = getBoliviaCalendar()
         return when (calendar.get(Calendar.DAY_OF_WEEK)) {
             Calendar.SATURDAY -> saturdaySchedule
             Calendar.SUNDAY -> sundaySchedule
@@ -55,20 +58,38 @@ object ScheduleProvider {
     }
 
     fun getCurrentProgram(): Program {
-        val calendar = Calendar.getInstance()
+        val calendar = getBoliviaCalendar()
         val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
-        val currentTime = "%02d:%02d".format(calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE))
+        val currentTime = "%02d:%02d".format(
+            calendar.get(Calendar.HOUR_OF_DAY),
+            calendar.get(Calendar.MINUTE)
+        )
 
         val currentList = getTodaySchedule()
-        var foundProgram = currentList.lastOrNull { it.startTime <= currentTime } ?: currentList.first()
 
-        if (dayOfWeek != Calendar.SATURDAY && dayOfWeek != Calendar.SUNDAY && foundProgram.startTime == "19:00") {
-            if (dayOfWeek == Calendar.TUESDAY || dayOfWeek == Calendar.THURSDAY) {
-                foundProgram = foundProgram.copy(name = "Hablando de Bolivia con una taza de café", isMusical = false)
+        // CORRECCIÓN: si no hay ningún programa que haya empezado aún
+        // (madrugada antes de las 05:45) mostramos el Cierre de Emisión
+        // del día anterior, que es el último programa de la lista
+        var foundProgram = currentList.lastOrNull { it.startTime <= currentTime }
+            ?: currentList.last() // ← CORRECCIÓN: last() en lugar de first()
+
+        // Lógica especial para el programa de las 19:00 entre semana
+        if (dayOfWeek != Calendar.SATURDAY &&
+            dayOfWeek != Calendar.SUNDAY &&
+            foundProgram.startTime == "19:00"
+        ) {
+            foundProgram = if (dayOfWeek == Calendar.TUESDAY ||
+                dayOfWeek == Calendar.THURSDAY
+            ) {
+                foundProgram.copy(
+                    name = "Hablando de Bolivia con una taza de café",
+                    isMusical = false
+                )
             } else {
-                foundProgram = foundProgram.copy(name = "Musical", isMusical = true)
+                foundProgram.copy(name = "Musical", isMusical = true)
             }
         }
+
         return foundProgram
     }
 }

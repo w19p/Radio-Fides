@@ -10,7 +10,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 
-const val STREAM_URL = "https://usa7.fastcast4u.com/proxy/grflores?mp=/stream/1/"
+const val STREAM_URL = "https://usa7.fastcast4u.com/proxy/grflores?mp=/1"
 
 @UnstableApi
 class FidesMediaService : MediaSessionService() {

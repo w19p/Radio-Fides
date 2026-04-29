@@ -53,7 +53,7 @@ import com.radiofides.viewmodel.FidesViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
+import android.content.ActivityNotFoundException
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaylistScreen(viewModel: FidesViewModel, navController: NavController) {
@@ -183,8 +183,7 @@ fun PlaylistScreen(viewModel: FidesViewModel, navController: NavController) {
                                 // BOTÓN REPRODUCIR
                                 IconButton(onClick = {
                                     try {
-                                        val audioFile =
-                                            viewModel.getAudioFile(marcador.timestamp)
+                                        val audioFile = viewModel.getAudioFile(marcador.timestamp)
                                         if (audioFile.exists()) {
                                             viewModel.pausarRadio()
                                             val contentUri = FileProvider.getUriForFile(
@@ -192,29 +191,14 @@ fun PlaylistScreen(viewModel: FidesViewModel, navController: NavController) {
                                                 "${context.packageName}.fileprovider",
                                                 audioFile
                                             )
-                                            val playIntent =
-                                                Intent(Intent.ACTION_VIEW).apply {
-                                                    setDataAndType(contentUri, "audio/*")
-                                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                                }
-                                            val resolvedActivities =
-                                                context.packageManager
-                                                    .queryIntentActivities(playIntent, 0)
-                                            if (resolvedActivities.isNotEmpty()) {
-                                                context.startActivity(
-                                                    Intent.createChooser(
-                                                        playIntent,
-                                                        "Abrir con..."
-                                                    )
-                                                )
-                                            } else {
-                                                Toast.makeText(
-                                                    context,
-                                                    "No hay reproductor instalado",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
+                                            val playIntent = Intent(Intent.ACTION_VIEW).apply {
+                                                setDataAndType(contentUri, "audio/*")
+                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                             }
+                                            context.startActivity(
+                                                Intent.createChooser(playIntent, "Abrir con...")
+                                            )
                                         } else {
                                             Toast.makeText(
                                                 context,
@@ -222,6 +206,13 @@ fun PlaylistScreen(viewModel: FidesViewModel, navController: NavController) {
                                                 Toast.LENGTH_SHORT
                                             ).show()
                                         }
+                                    } catch (e: ActivityNotFoundException) {
+                                        // No hay ninguna app que pueda abrir audio
+                                        Toast.makeText(
+                                            context,
+                                            "No hay reproductor de audio instalado",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     } catch (e: Exception) {
                                         Log.e(
                                             "PlaylistScreen",
