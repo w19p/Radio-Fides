@@ -436,7 +436,7 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                         enabled = isPlaying || viewModel.isRecording,
                         modifier = Modifier.size(48.dp).graphicsLayer(alpha = if (viewModel.isRecording) recordingAlpha else if (isPlaying) 1f else 0.5f).background(if (viewModel.isRecording) Color.Red else MaterialTheme.colorScheme.error.copy(alpha = if (isPlaying) 1f else 0.5f), CircleShape)
                     ) {
-                        Icon(painter = painterResource(id = if (viewModel.isRecording) R.drawable.ic_exit else R.drawable.ic_grabadora), contentDescription = "Grabar", tint = Color.White.copy(alpha = if (isPlaying || viewModel.isRecording) {1f} else 0.5f))
+                        Icon(painter = painterResource(id = if (viewModel.isRecording) R.drawable.ic_grabar_off else R.drawable.pruebaxml), contentDescription = "Grabar", tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = if (isPlaying || viewModel.isRecording) {1f} else 0.5f))
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(text = if (viewModel.isRecording) "GRABANDO..." else "GRABAR", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold), color = if (viewModel.isRecording) Color.Red.copy(alpha = recordingAlpha) else Color.Gray, modifier = Modifier.graphicsLayer(alpha = if (viewModel.isRecording) recordingAlpha else if (isPlaying) 1f else 0.5f))
@@ -461,9 +461,9 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                             .background(MaterialTheme.colorScheme.primary, CircleShape)
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.temporizador),
+                            painter = painterResource(id = R.drawable.ic_timer),
                             contentDescription = "Temporizador",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                     Spacer(modifier = Modifier.height(4.dp))
@@ -506,7 +506,7 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                         Column {
                             Text("Escribe un nombre para este marcador informativo:")
                             Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(value = viewModel.nuevoNombreMarcador, onValueChange = { viewModel.nuevoNombreMarcador = it }, label = { Text("Ej: Entrevista Política") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            OutlinedTextField(value = viewModel.nuevoNombreMarcador, onValueChange = { viewModel.nuevoNombreMarcador = it }, label = { Text("Ej: Nombre del archivo") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         }
                     },
                     confirmButton = { Button(onClick = { if (viewModel.nuevoNombreMarcador.isNotBlank()) { viewModel.guardarEnPlaylist(viewModel.nuevoNombreMarcador) } }) { Text("Guardar") } },
