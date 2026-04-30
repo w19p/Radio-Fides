@@ -78,14 +78,14 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.radiofides.R
 import com.radiofides.ui.theme.VerdeClaro
-import com.radiofides.ui.theme.VerdeMenta
-import com.radiofides.ui.theme.VerdeOscuro
-import com.radiofides.ui.theme.VerdePino
+import com.radiofides.ui.theme.VerdeMedio
+import com.radiofides.ui.theme.VerdeMuyClaro
 import com.radiofides.viewmodel.FidesViewModel
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
 // ELIMINAR
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -166,7 +166,7 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
             CenterAlignedTopAppBar(
                 title = { Text(text = "", fontWeight = FontWeight.Black) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = VerdePino, // fondo
+                    containerColor = VerdeMedio, // fondo
                     titleContentColor = MaterialTheme.colorScheme.background     // color del texto
                 ),
                 navigationIcon = {
@@ -221,31 +221,31 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                                 text = { Text("Facebook", color = Color.White) },
                                 onClick = { openUrl("https://www.facebook.com/RadioFidesBolivia/?locale=es_LA") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.iconfacebook), contentDescription = null, modifier = Modifier.size(22.dp)) },
-                                modifier = Modifier.background(Color(0xFF1877F2))
+                                //modifier = Modifier.background(Color(0xFF1877F2))
                             )
                             DropdownMenuItem(
                                 text = { Text("Instagram", color = Color.White) },
                                 onClick = { openUrl("https://www.instagram.com/radiofidesbolivia/") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.iconinstagram), contentDescription = null, modifier = Modifier.size(22.dp)) },
-                                modifier = Modifier.background(Color(0xFFE4405F))
+                                //modifier = Modifier.background(Color(0xFFE4405F))
                             )
                             DropdownMenuItem(
                                 text = { Text("TikTok", color = Color.White) },
                                 onClick = { openUrl("https://www.tiktok.com/@radiofidesboliviaoficial") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.icontiktok), contentDescription = null, modifier = Modifier.size(22.dp)) },
-                                modifier = Modifier.background(Color.Black)
+                                //modifier = Modifier.background(Color.Black)
                             )
                             DropdownMenuItem(
                                 text = { Text("Twitter (X)", color = Color.White) },
                                 onClick = { openUrl("https://x.com/GrupoFides?mx=2") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.icontwitter), contentDescription = null, modifier = Modifier.size(22.dp)) },
-                                modifier = Modifier.background(Color(0xFF14171A))
+                                //modifier = Modifier.background(Color(0xFF14171A))
                             )
                             DropdownMenuItem(
                                 text = { Text("YouTube", color = Color.White) },
                                 onClick = { openUrl("https://www.youtube.com/@RadioFidesdeBolivia/") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.iconyoutube), contentDescription = null, modifier = Modifier.size(22.dp)) },
-                                modifier = Modifier.background(Color(0xFFFF0000))
+                                //modifier = Modifier.background(Color(0xFFFF0000))
                             )
                         }
                     }
@@ -269,7 +269,8 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.ExtraBold
-                                )
+                                ),
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                         }
 
@@ -303,7 +304,8 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.ExtraBold
-                                )
+                                ),
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                         }
                     }
@@ -329,9 +331,12 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                         .background(
                             Brush.linearGradient(
                                 colors = listOf(
-                                    VerdeOscuro,
+                                    //VerdeOscuro,
+                                    VerdeMedio,
                                     VerdeClaro,
-                                    VerdeMenta
+                                    VerdeMuyClaro
+
+
                                 ),
                             )
                         ),
@@ -464,7 +469,7 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                     ) {
                         Icon(
                             painter = painterResource(
-                                id = if (viewModel.tiempoTemporizador > 0) R.drawable.ic_timer_stop
+                                id = if (viewModel.tiempoTemporizador > 0) R.drawable.ic_timer
                                 else R.drawable.ic_timer
                             ),
                             contentDescription = "Temporizador",
@@ -475,7 +480,7 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                     Text(
                         text = if (viewModel.tiempoTemporizador > 0) "DETENER" else "APAGAR",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
-                        color = if (viewModel.tiempoTemporizador > 0) Color.Red else MaterialTheme.colorScheme.primary,
+                        color = if (viewModel.tiempoTemporizador > 0) Color.Cyan else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.graphicsLayer(
                             alpha = if (viewModel.tiempoTemporizador > 0) sleepAlpha else 1f
                         )

@@ -14,6 +14,9 @@ val Pink40 = Color(0xFF7D5260)
 // --- PALETA OFICIAL RADIO FIDES ---
 // Usados en FidesHome.kt y WelcomeScreen.kt
 val VerdeOscuro = Color(0xFF1F5A23)
-val VerdeClaro = Color(0xFF2E7D32)
-val VerdeMenta = Color(0xFF4CC790)
-val VerdePino = Color(0xFF7BB52E)
+val VerdeMedio= Color(0xFF2E7D32)
+val VerdeClaro = Color(0xFF4CC790)
+
+val VerdeMuyClaro = Color(0xFFE8F5E9)
+
+val White = Color(0xFFFFFFFF)

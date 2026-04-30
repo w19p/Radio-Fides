@@ -39,8 +39,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.radiofides.R
 import com.radiofides.ui.theme.VerdeClaro
-import com.radiofides.ui.theme.VerdeMenta
-import com.radiofides.ui.theme.VerdeOscuro
+import com.radiofides.ui.theme.VerdeMedio
+import com.radiofides.ui.theme.VerdeMuyClaro
 import com.radiofides.viewmodel.FidesViewModel
 import kotlinx.coroutines.delay
 
@@ -95,9 +95,10 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
                             .background(
                                 Brush.linearGradient(
                                     colors = listOf(
-                                        VerdeOscuro,
+                                        //VerdeOscuro,
+                                        VerdeMedio,
                                         VerdeClaro,
-                                        VerdeMenta
+                                        VerdeMuyClaro
                                     )
                                 )
                             ),
