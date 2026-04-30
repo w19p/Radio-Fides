@@ -452,6 +452,8 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                 }
 
                 // [NUEVO] Botón de TEMPORIZADOR con color fijo y parpadeo
+
+                // DESPUÉS — con texto dinámico debajo
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconButton(
                         onClick = { viewModel.showSleepDialog = true },
@@ -461,17 +463,22 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                             .background(MaterialTheme.colorScheme.primary, CircleShape)
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_timer),
+                            painter = painterResource(
+                                id = if (viewModel.tiempoTemporizador > 0) R.drawable.ic_timer_stop
+                                else R.drawable.ic_timer
+                            ),
                             contentDescription = "Temporizador",
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = if (viewModel.tiempoTemporizador > 0) tiempoFormateado else "APAGADO",
+                        text = if (viewModel.tiempoTemporizador > 0) "DETENER" else "APAGAR",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.graphicsLayer(alpha = if (viewModel.tiempoTemporizador > 0) sleepAlpha else 1f)
+                        color = if (viewModel.tiempoTemporizador > 0) Color.Red else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.graphicsLayer(
+                            alpha = if (viewModel.tiempoTemporizador > 0) sleepAlpha else 1f
+                        )
                     )
                 }
             }
