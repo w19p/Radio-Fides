@@ -61,11 +61,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -85,8 +88,6 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
-// ELIMINAR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -164,10 +165,10 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(text = "", fontWeight = FontWeight.Black) },
+                title = {},
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = VerdeMedio, // fondo
-                    titleContentColor = MaterialTheme.colorScheme.background     // color del texto
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
                 ),
                 navigationIcon = {
                     Box {
@@ -205,12 +206,12 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                             }
 
                             DropdownMenuItem(
-                                text = { Text("Página Oficial", fontWeight = FontWeight.Bold) },
+                                text = { Text("Página Oficial", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground) },
                                 onClick = { openUrl("https://radiofides.com/es/") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.logo_fides_oficial), contentDescription = null, modifier = Modifier.size(24.dp)) }
                             )
                             DropdownMenuItem(
-                                text = { Text("Clínica Fides", fontWeight = FontWeight.Bold) },
+                                text = { Text("Clínica Fides", fontWeight = FontWeight.Bold,color = MaterialTheme.colorScheme.onBackground) },
                                 onClick = { openUrl("https://www.clinicafides.com/") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.logo_clinca_fides), contentDescription = null, modifier = Modifier.size(24.dp)) }
                             )
@@ -218,34 +219,29 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                             DropdownMenuItem(
-                                text = { Text("Facebook", color = Color.White) },
+                                text = { Text("Radio Fides Bolivia", color = MaterialTheme.colorScheme.onBackground) },
                                 onClick = { openUrl("https://www.facebook.com/RadioFidesBolivia/?locale=es_LA") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.iconfacebook), contentDescription = null, modifier = Modifier.size(22.dp)) },
-                                //modifier = Modifier.background(Color(0xFF1877F2))
                             )
                             DropdownMenuItem(
-                                text = { Text("Instagram", color = Color.White) },
+                                text = { Text("radio fides bolivia", color = MaterialTheme.colorScheme.onBackground) },
                                 onClick = { openUrl("https://www.instagram.com/radiofidesbolivia/") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.iconinstagram), contentDescription = null, modifier = Modifier.size(22.dp)) },
-                                //modifier = Modifier.background(Color(0xFFE4405F))
                             )
                             DropdownMenuItem(
-                                text = { Text("TikTok", color = Color.White) },
+                                text = { Text("radio fides bolivia oficial",color = MaterialTheme.colorScheme.onBackground) },
                                 onClick = { openUrl("https://www.tiktok.com/@radiofidesboliviaoficial") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.icontiktok), contentDescription = null, modifier = Modifier.size(22.dp)) },
-                                //modifier = Modifier.background(Color.Black)
                             )
                             DropdownMenuItem(
-                                text = { Text("Twitter (X)", color = Color.White) },
+                                text = { Text("Grupo Fides", color = MaterialTheme.colorScheme.onBackground) },
                                 onClick = { openUrl("https://x.com/GrupoFides?mx=2") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.icontwitter), contentDescription = null, modifier = Modifier.size(22.dp)) },
-                                //modifier = Modifier.background(Color(0xFF14171A))
                             )
                             DropdownMenuItem(
-                                text = { Text("YouTube", color = Color.White) },
+                                text = { Text("Radio Fides de Bolivia", color = MaterialTheme.colorScheme.onBackground) },
                                 onClick = { openUrl("https://www.youtube.com/@RadioFidesdeBolivia/") },
                                 leadingIcon = { Image(painter = painterResource(id = R.drawable.iconyoutube), contentDescription = null, modifier = Modifier.size(22.dp)) },
-                                //modifier = Modifier.background(Color(0xFFFF0000))
                             )
                         }
                     }
@@ -321,7 +317,6 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
             // --- SECCIÓN 1: El Logo con Fondo de Imagen ---
             ElevatedCard(    modifier = Modifier.size(280.dp),
                 shape = RoundedCornerShape(32.dp),
-                // Quitamos el containerColor blanco para que no interfiera si hay transparencias
                 colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
                 elevation = CardDefaults.elevatedCardElevation(defaultElevation = 12.dp),
             ) {
@@ -330,19 +325,11 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                         .fillMaxSize()
                         .background(
                             Brush.linearGradient(
-                                colors = listOf(
-                                    //VerdeOscuro,
-                                    VerdeMedio,
-                                    VerdeClaro,
-                                    VerdeMuyClaro
-
-
-                                ),
+                                colors = listOf(VerdeMedio, VerdeClaro, VerdeMuyClaro),
                             )
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    // CAPA 1: Imagen del LOGO (Encima del fondo)
                     Image(
                         painter = painterResource(id = R.drawable.logo2),
                         contentDescription = "Logo Fides",
@@ -366,7 +353,6 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                             modifier = Modifier.padding(12.dp).size(85.dp).shadow(10.dp, RoundedCornerShape(12.dp), clip = true),
                             shape = RoundedCornerShape(12.dp), color = Color.White
                         ) {
-                            // [LÓGICA] Foto: Si es musical y hay carátula en JSON -> Mostrar. Si no -> Logo genérico.
                             if (currentProgram.isMusical && !viewModel.currentImageUrl.isNullOrEmpty()) {
                                 AsyncImage(
                                     model = viewModel.currentImageUrl,
@@ -384,7 +370,6 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                             }
                         }
                         Column(modifier = Modifier.fillMaxHeight().padding(end = 16.dp, top = 12.dp, bottom = 12.dp), verticalArrangement = Arrangement.Center) {
-                            // [LÓGICA] Título: Si es musical -> Canción. Si no -> Nombre del Programa.
                             Text(
                                 text = if (currentProgram.isMusical) viewModel.currentTitle else currentProgram.name,
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold, fontSize = 18.sp),
@@ -392,7 +377,6 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                                 modifier = Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE)
                             )
                             Spacer(modifier = Modifier.height(4.dp))
-                            // [LÓGICA] Artista/Conductor: Si es musical -> Cantante. Si no -> Locutor.
                             Text(
                                 text = if (currentProgram.isMusical) viewModel.currentArtist else currentProgram.conductor,
                                 style = MaterialTheme.typography.bodyMedium,
@@ -420,10 +404,9 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                                 withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)) { append(parts[1]) }
                             } else { append(currentTime) }
 
-                            // Contador del temporizador junto a la hora
                             if (viewModel.tiempoTemporizador > 0) {
                                 append("  ")
-                                withStyle(style = SpanStyle(fontWeight = FontWeight.Black, fontSize = 14.sp, color = Color.Red)) {
+                                withStyle(style = SpanStyle(fontWeight = FontWeight.Black, fontSize = 14.sp, color = Color.Cyan)) {
                                     append("⏲ $tiempoFormateado")
                                 }
                             }
@@ -434,7 +417,6 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
 
             // --- SECCIÓN 3: Controles ---
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                // [FLUJO] Botón de GRABAR
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconButton(
                         onClick = { if (isPlaying || viewModel.isRecording) { viewModel.iniciarDetenerGrabacion() } },
@@ -456,9 +438,6 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                     }
                 }
 
-                // [NUEVO] Botón de TEMPORIZADOR con color fijo y parpadeo
-
-                // DESPUÉS — con texto dinámico debajo
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     IconButton(
                         onClick = { viewModel.showSleepDialog = true },
@@ -468,10 +447,7 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                             .background(MaterialTheme.colorScheme.primary, CircleShape)
                     ) {
                         Icon(
-                            painter = painterResource(
-                                id = if (viewModel.tiempoTemporizador > 0) R.drawable.ic_timer
-                                else R.drawable.ic_timer
-                            ),
+                            painter = painterResource(id = R.drawable.ic_timer),
                             contentDescription = "Temporizador",
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
@@ -488,29 +464,27 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                 }
             }
 
-            // DIÁLOGO DEL TEMPORIZADOR
+            // Diálogos
             if (viewModel.showSleepDialog) {
-                AlertDialog(
-                    onDismissRequest = { viewModel.showSleepDialog = false },
-                    title = { Text("Temporizador de Apagado") },
-                    text = {
-                        Column {
-                            Text("¿En cuánto tiempo quieres apagar la radio?")
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                Button(onClick = { viewModel.programarApagado(15) }) { Text("15m") }
-                                Button(onClick = { viewModel.programarApagado(30) }) { Text("30m") }
-                                Button(onClick = { viewModel.programarApagado(60) }) { Text("60m") }
-                            }
-                            TextButton(onClick = { viewModel.programarApagado(0) }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Desactivar Temporizador", color = Color.Red) }
-                        }
-                    },
-                    confirmButton = {}
-                )
+                AlertDialog(onDismissRequest = { viewModel.showSleepDialog = false }, title = { Text("Temporizador") }, text = {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        Button(onClick = { viewModel.programarApagado(15) }) { Text("15m") }
+                        Button(onClick = { viewModel.programarApagado(30) }) { Text("30m") }
+                        Button(onClick = { viewModel.programarApagado(60) }) { Text("60m") }
+                    }
+                }, confirmButton = {})
             }
 
-            // DIÁLOGO DE GUARDADO
             if (viewModel.showSaveDialog) {
+                val focusRequester = remember { FocusRequester() }
+                val keyboardController = LocalSoftwareKeyboardController.current
+                
+                LaunchedEffect(Unit) {
+                    delay(300) // Retraso para asegurar que el diálogo esté asentado
+                    focusRequester.requestFocus()
+                    keyboardController?.show() // Forzamos la apertura del teclado
+                }
+
                 AlertDialog(
                     onDismissRequest = { viewModel.showSaveDialog = false },
                     title = { Text(text = "Guardar Noticia", fontWeight = FontWeight.Bold) },
@@ -518,10 +492,18 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                         Column {
                             Text("Escribe un nombre para este marcador informativo:")
                             Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedTextField(value = viewModel.nuevoNombreMarcador, onValueChange = { viewModel.nuevoNombreMarcador = it }, label = { Text("Ej: Nombre del archivo") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            OutlinedTextField(
+                                value = viewModel.nuevoNombreMarcador, 
+                                onValueChange = { viewModel.nuevoNombreMarcador = it }, 
+                                label = { Text("Ej: Nombre del archivo") }, 
+                                singleLine = true, 
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusRequester(focusRequester)
+                            )
                         }
                     },
-                    confirmButton = { Button(onClick = { if (viewModel.nuevoNombreMarcador.isNotBlank()) { viewModel.guardarEnPlaylist(viewModel.nuevoNombreMarcador) } }) { Text("Guardar") } },
+                    confirmButton = { Button(onClick = { if (viewModel.nuevoNombreMarcador.isNotBlank()) viewModel.guardarEnPlaylist(viewModel.nuevoNombreMarcador) }) { Text("Guardar") } },
                     dismissButton = { TextButton(onClick = { viewModel.showSaveDialog = false }) { Text("Cancelar") } }
                 )
             }
@@ -532,39 +514,22 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
 @Composable
 fun AudioVisualizer(isPlaying: Boolean) {
     val infiniteTransition = rememberInfiniteTransition(label = "audio_visualizer")
-
     val heights = (0 until 8).map { i ->
         infiniteTransition.animateFloat(
             initialValue = 0.1f,
             targetValue = if (isPlaying) 1f else 0.1f,
             animationSpec = infiniteRepeatable(
-                animation = tween(
-                    durationMillis = 400 + (i * 150),
-                    easing = FastOutSlowInEasing
-                ),
+                animation = tween(durationMillis = 400 + (i * 150), easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "bar_$i"
         )
     }
 
-    Row(
-        modifier = Modifier.height(30.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Row(modifier = Modifier.height(30.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
         heights.forEach { heightState ->
             val height by heightState
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight(height)
-                    .background(
-                        color = if (isPlaying) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.outlineVariant,
-                        shape = RoundedCornerShape(2.dp)
-                    )
-            )
+            Box(modifier = Modifier.width(4.dp).fillMaxHeight(height).background(color = if (isPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, shape = RoundedCornerShape(2.dp)))
         }
     }
 }

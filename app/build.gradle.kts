@@ -37,8 +37,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    // [CORREGIDO] kotlinOptions fue eliminado en AGP 8+
-    // La forma correcta ahora es compilerOptions dentro de kotlin {}
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
@@ -60,6 +58,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    
+    // [APRENDIZAJE] Esta línea es vital para usar iconos como Timer, Language y Notifications
     implementation("androidx.compose.material:material-icons-extended")
 
     implementation("androidx.navigation:navigation-compose:2.8.0")

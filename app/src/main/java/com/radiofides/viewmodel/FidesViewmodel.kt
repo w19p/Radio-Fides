@@ -88,11 +88,15 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
 
         override fun onLost(network: Network) {
             viewModelScope.launch(Dispatchers.Main) {
-                isNetworkAvailable = false
-                if (isRecording) {
-                    isRecording = false
-                    recordingJob?.cancel()
-                    showSaveDialog = false
+                // Pequeña validación: ¿Realmente no hay ninguna red activa?
+                val activeNetwork = connectivityManager.activeNetwork
+                if (activeNetwork == null) {
+                    isNetworkAvailable = false
+                    if (isRecording) {
+                        isRecording = false
+                        recordingJob?.cancel()
+                        showSaveDialog = false
+                    }
                 }
             }
         }
@@ -101,37 +105,24 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
             network: Network,
             networkCapabilities: NetworkCapabilities
         ) {
-            val hasInternet =
-                networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                        networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            val hasInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             viewModelScope.launch(Dispatchers.Main) {
                 if (isNetworkAvailable != hasInternet) {
                     isNetworkAvailable = hasInternet
-                    if (!hasInternet && isRecording) {
-                        isRecording = false
-                        recordingJob?.cancel()
-                        showSaveDialog = false
-                    }
                 }
             }
         }
     }
 
     // --- ALMACENAMIENTO ---
-    // Carpeta privada — solo para archivos .txt de metadata
-    // Vive en filesDir, se borra al desinstalar
     private val folderMetadata = File(application.filesDir, "Grabaciones radio fides")
 
-    // Carpeta pública — solo para archivos .mp3
-    // Vive en Music/Radio Fides/, sobrevive la desinstalación
     private val folderMusica: File =
         File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC),
             "Radio Fides"
         )
 
-    // CORRECCIÓN: En Android 10+ no se necesita permiso para escribir en Music
-    // En Android 9 y anteriores se pide en MainActivity
     var tienePermisoAlmacenamiento by mutableStateOf(
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
     )
@@ -144,9 +135,8 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Funciones helper — la UI nunca construye rutas directamente
     fun getAudioFile(timestamp: Long): File =
-        File(folderMusica, "audio_$timestamp.mp3")
+        File(if (tienePermisoAlmacenamiento) folderMusica else folderMetadata, "audio_$timestamp.mp3")
 
     fun getTxtFile(timestamp: Long): File =
         File(folderMetadata, "grabacion_$timestamp.txt")
@@ -189,9 +179,6 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     browser?.addListener(object : Player.Listener {
                         override fun onIsPlayingChanged(playing: Boolean) {
                             isPlaying = playing
-                            if (!playing && isRecording) {
-                                viewModelScope.launch { iniciarDetenerGrabacion() }
-                            }
                         }
                         override fun onPlaybackStateChanged(state: Int) {
                             isBuffering = (state == Player.STATE_BUFFERING)
@@ -208,13 +195,8 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         startMetadataRefresh()
         startScheduleRefresh()
 
-        // CORRECCIÓN: solo creamos folderMetadata aquí en el init
-        // folderMusica se crea en onStoragePermissionResult() cuando
-        // tengamos el permiso confirmado — evita el EPERM en Android 9
         if (!folderMetadata.exists()) folderMetadata.mkdirs()
 
-        // En Android 10+ creamos la carpeta pública directamente
-        // porque no necesitamos permiso
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             if (!folderMusica.exists()) folderMusica.mkdirs()
         }
@@ -238,48 +220,35 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                 val connection = url.openConnection() as HttpURLConnection
                 connection.connectTimeout = 8_000
                 connection.readTimeout = 8_000
-                connection.connect()
 
-                if (connection.responseCode != HttpURLConnection.HTTP_OK) {
-                    Log.w("FidesVM", "Metadata: respuesta ${connection.responseCode}")
-                    return@launch
-                }
+                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    val jsonText = connection.inputStream.bufferedReader().readText()
+                    val root = JSONObject(jsonText)
+                    val results = root.optJSONArray("result")
 
-                val jsonText = connection.inputStream.bufferedReader().readText()
-                val root = JSONObject(jsonText)
-                val results = root.optJSONArray("result")
+                    if (results != null && results.length() > 0) {
+                        val current = results.getJSONObject(0)
+                        withContext(Dispatchers.Main) {
+                            val title = current.optString("track_title", "Radio Fides")
+                            val artist = current.optString("track_artist", "La voz que camina con el pueblo")
 
-                if (results != null && results.length() > 0) {
-                    val current = results.getJSONObject(0)
-                    withContext(Dispatchers.Main) {
-                        val title = current.optString("track_title", "Radio Fides")
-                        val artist = current.optString(
-                            "track_artist",
-                            "La voz que camina con el pueblo"
-                        )
-                        if (BLACKLIST.any {
-                                title.contains(it, true) || artist.contains(it, true)
-                            }) {
-                            resetToDefaultMetadata()
-                        } else {
-                            currentTitle = title
-                            currentArtist = artist
-                            currentImageUrl =
-                                current.optString("track_image", "").ifEmpty { null }
-                            if (currentProgram.isMusical) {
-                                updateMediaSession(currentTitle, currentArtist, currentImageUrl)
+                            if (BLACKLIST.any { title.contains(it, true) || artist.contains(it, true) }) {
+                                resetToDefaultMetadata()
                             } else {
-                                updateMediaSession(
-                                    currentProgram.name,
-                                    currentProgram.conductor,
-                                    null
-                                )
+                                currentTitle = title
+                                currentArtist = artist
+                                currentImageUrl = current.optString("track_image", "").ifEmpty { null }
+                                
+                                val mediaTitle = if (currentProgram.isMusical) currentTitle else currentProgram.name
+                                val mediaArtist = if (currentProgram.isMusical) currentArtist else currentProgram.conductor
+                                val mediaImage = if (currentProgram.isMusical) currentImageUrl else null
+                                updateMediaSession(mediaTitle, mediaArtist, mediaImage)
                             }
                         }
                     }
                 }
             } catch (e: Exception) {
-                Log.e("FidesVM", "Error obteniendo metadata: ${e.message}")
+                Log.e("FidesVM", "Error metadata: ${e.message}")
             }
         }
     }
@@ -302,18 +271,14 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun updateMediaSession(title: String, artist: String, image: String?) {
         browser?.let { controller ->
-            val logoUri =
-                "android.resource://${getApplication<Application>().packageName}/${R.drawable.logo_fides_oficial}".toUri()
+            val logoUri = "android.resource://${getApplication<Application>().packageName}/${R.drawable.logo_fides_oficial}".toUri()
             val metadata = MediaMetadata.Builder()
                 .setTitle(title)
                 .setArtist(artist)
                 .setArtworkUri(if (!image.isNullOrEmpty()) image.toUri() else logoUri)
                 .build()
-            val currentItem = controller.currentMediaItem?.buildUpon()
-                ?.setMediaMetadata(metadata)?.build()
-            if (currentItem != null) {
-                controller.replaceMediaItem(0, currentItem)
-            }
+            val currentItem = controller.currentMediaItem?.buildUpon()?.setMediaMetadata(metadata)?.build()
+            if (currentItem != null) controller.replaceMediaItem(0, currentItem)
         }
     }
 
@@ -366,23 +331,7 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     private fun startAudioRecording(timestamp: Long) {
         recordingJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                val carpetaDestino =
-                    if (tienePermisoAlmacenamiento) folderMusica else folderMetadata
-                if (!carpetaDestino.exists()) carpetaDestino.mkdirs()
-
-                val espacioLibre = carpetaDestino.freeSpace
-                if (espacioLibre < 50 * 1024 * 1024) {
-                    Log.w("FidesVM", "Espacio insuficiente para grabar")
-                    withContext(Dispatchers.Main) {
-                        isRecording = false
-                        showSaveDialog = false
-                    }
-                    return@launch
-                }
-
-                // CORRECCIÓN: el archivo de audio siempre va a carpetaDestino
-                // no usamos getAudioFile() aquí porque en Android 9 sin permiso
-                // carpetaDestino sería folderMetadata, no folderMusica
+                val carpetaDestino = if (tienePermisoAlmacenamiento) folderMusica else folderMetadata
                 val audioFile = File(carpetaDestino, "audio_$timestamp.mp3")
                 val url = URL(STREAM_URL)
                 val connection = url.openConnection() as HttpURLConnection
@@ -402,10 +351,8 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             } catch (e: Exception) {
-                Log.e("FidesVM", "Error en grabación: ${e.message}")
-                withContext(Dispatchers.Main) {
-                    isRecording = false
-                }
+                Log.e("FidesVM", "Error grabación: ${e.message}")
+                withContext(Dispatchers.Main) { isRecording = false }
             }
         }
     }
@@ -414,10 +361,8 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val timestamp = currentRecordingTimestamp
-                val nuevoMarcador = SavedBookmark(
-                    nombreElegido, currentTitle, currentArtist, currentImageUrl, timestamp
-                )
-                val archivoTxt = getTxtFile(timestamp) // ← siempre va a folderMetadata
+                val nuevoMarcador = SavedBookmark(nombreElegido, currentTitle, currentArtist, currentImageUrl, timestamp)
+                val archivoTxt = getTxtFile(timestamp)
                 val contenido = listOf(
                     nuevoMarcador.customName.replace("|", "/"),
                     nuevoMarcador.title.replace("|", "/"),
@@ -433,9 +378,7 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     isRecording = false
                     contadorNuevasGrabaciones++
                 }
-            } catch (e: Exception) {
-                Log.e("FidesVM", "Error guardando en playlist: ${e.message}")
-            }
+            } catch (_: Exception) { }
         }
     }
 
@@ -444,27 +387,14 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
             val listaTemporal = mutableListOf<SavedBookmark>()
             if (folderMetadata.exists()) {
                 folderMetadata.listFiles()?.forEach { archivo ->
-                    if (archivo.name.endsWith(".txt") &&
-                        archivo.name.startsWith("grabacion_")
-                    ) {
+                    if (archivo.name.endsWith(".txt") && archivo.name.startsWith("grabacion_")) {
                         try {
                             val datos = archivo.readText().split("|")
                             if (datos.size >= 4) {
-                                val timestamp = archivo.name
-                                    .removePrefix("grabacion_")
-                                    .removeSuffix(".txt")
-                                    .toLong()
-                                listaTemporal.add(
-                                    SavedBookmark(
-                                        datos[0], datos[1], datos[2],
-                                        if (datos[3] == "null") null else datos[3],
-                                        timestamp
-                                    )
-                                )
+                                val timestamp = archivo.name.removePrefix("grabacion_").removeSuffix(".txt").toLong()
+                                listaTemporal.add(SavedBookmark(datos[0], datos[1], datos[2], if (datos[3] == "null") null else datos[3], timestamp))
                             }
-                        } catch (e: Exception) {
-                            Log.e("FidesVM", "Error leyendo grabación: ${archivo.name}")
-                        }
+                        } catch (e: Exception) { }
                     }
                 }
             }
@@ -489,31 +419,19 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     private fun checkInitialNetwork() {
         val activeNetwork = connectivityManager.activeNetwork
         val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-        isNetworkAvailable =
-            capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true &&
-                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        isNetworkAvailable = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
     }
 
     private fun registerNetworkCallback() {
         try {
-            val request = NetworkRequest.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build()
+            val request = NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build()
             connectivityManager.registerNetworkCallback(request, networkCallback)
-        } catch (e: SecurityException) {
-            Log.e("FidesVM", "No se pudo registrar NetworkCallback: ${e.message}")
-        } catch (e: RuntimeException) {
-            Log.e("FidesVM", "Error inesperado al registrar NetworkCallback: ${e.message}")
-        }
+        } catch (e: Exception) { }
     }
 
     override fun onCleared() {
         super.onCleared()
-        try {
-            connectivityManager.unregisterNetworkCallback(networkCallback)
-        } catch (e: RuntimeException) {
-            Log.e("FidesVM", "Error al desregistrar NetworkCallback: ${e.message}")
-        }
+        try { connectivityManager.unregisterNetworkCallback(networkCallback) } catch (e: Exception) { }
         browser?.release()
     }
 }
