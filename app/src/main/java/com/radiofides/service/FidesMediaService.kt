@@ -11,8 +11,9 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.radiofides.MainActivity
+import com.radiofides.R
 
-const val STREAM_URL = "https://usa7.fastcast4u.com/proxy/grflores?mp=/1"
+const val STREAM_URL = "https://cast6.asurahosting.com/proxy/irfradio/stream/1/"
 
 @UnstableApi
 class FidesMediaService : MediaSessionService() {
@@ -26,8 +27,8 @@ class FidesMediaService : MediaSessionService() {
             .setUri(STREAM_URL)
             .setMediaMetadata(
                 MediaMetadata.Builder()
-                    .setTitle("Radio Fides")
-                    .setArtist("La voz que camina con el pueblo")
+                    .setTitle(getString(R.string.app_name))
+                    .setArtist(getString(R.string.eslogan))
                     .build()
             )
             .build()

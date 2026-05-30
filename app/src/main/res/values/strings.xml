@@ -11,10 +11,13 @@
     <string name="label_en_directo">101.5 FM</string>
     <string name="label_volver">Volver</string>
     <string name="label_sintonizando">Sintonizando...</string>
+    <string name="label_ahora">AHORA</string>
+    <string name="label_programacion">PROGRAMACIÓN</string>
     <string name="label_abrir_con">Abrir con...</string>
     <string name="label_compartir_via">Compartir audio vía...</string>
-    <string name="label_ahora">AHORA</string>
+    <string name="label_waiting_connection">Esperando conexión...</string>
     <string name="label_grabado_el">Guardado el: %1$s</string>
+    <string name="label_grabacion">Grabación</string>
 
     <!-- Días de la Semana -->
     <string name="day_monday_friday">LUNES A VIERNES</string>
@@ -43,17 +46,18 @@
     <string name="dialog_sleep_desc">¿En cuánto tiempo quieres apagar la radio?</string>
     <string name="btn_desactivar_timer">Desactivar Temporizador</string>
 
+    <!-- Tiempos del Temporizador -->
+    <string name="timer_15m">15m</string>
+    <string name="timer_30m">30m</string>
+    <string name="timer_60m">60m</string>
+
     <!-- Pantallas -->
     <string name="title_playlist">Mis Grabaciones</string>
     <string name="title_grabaciones_fides">Grabaciones Radio Fides</string>
     <string name="empty_playlist">No tienes grabaciones guardadas</string>
     <string name="title_schedule">Programación: %1$s</string>
-    <string name="title_schedule_generic">Programación del Día</string>
-
-    <!-- Sin Internet -->
     <string name="title_no_internet">Sin conexión a internet</string>
     <string name="desc_no_internet">Parece que no tienes una conexión activa. Por favor, verifica tu Wi-Fi o datos móviles para seguir escuchando Radio Fides.</string>
-    <string name="label_waiting_connection">Esperando conexión...</string>
 
     <!-- Errores -->
     <string name="error_no_audio">El archivo de audio no existe</string>

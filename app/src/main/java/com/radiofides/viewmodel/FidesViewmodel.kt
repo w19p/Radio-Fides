@@ -3,12 +3,14 @@ package com.radiofides.viewmodel
 import android.app.Application
 import android.content.ComponentName
 import android.content.Context
+import android.media.MediaScannerConnection
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Build
 import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.compose.runtime.getValue
@@ -53,16 +55,12 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     // --- ESTADOS DE LA INTERFAZ ---
     var isBuffering by mutableStateOf(false)
     var isPlaying by mutableStateOf(false)
-
-    // --- METADATA ---
-    var currentTitle by mutableStateOf("Radio Fides")
-    var currentArtist by mutableStateOf("La voz que camina con el pueblo")
+    var currentTitle by mutableStateOf(application.getString(R.string.app_name))
+    var currentArtist by mutableStateOf(application.getString(R.string.eslogan))
     var currentImageUrl by mutableStateOf<String?>(null)
-
-    // --- CRONOGRAMA ---
     var currentProgram by mutableStateOf(ScheduleProvider.getCurrentProgram())
 
-    // --- GRABACIÓN ---
+    // --- ESTADOS DE GRABACIÓN ---
     var showSaveDialog by mutableStateOf(false)
     var nuevoNombreMarcador by mutableStateOf("")
     var isRecording by mutableStateOf(false)
@@ -75,43 +73,45 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     var showSleepDialog by mutableStateOf(false)
     private var sleepJob: Job? = null
 
-    // --- RED (MEJORADO PARA EVITAR SALTOS FALSOS) ---
+    // --- RED ---
     var isNetworkAvailable by mutableStateOf(true)
-    private val connectivityManager =
-        application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    private val connectivityManager = application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) {
-            viewModelScope.launch(Dispatchers.Main) { isNetworkAvailable = true }
-        }
+        override fun onAvailable(network: Network) { viewModelScope.launch(Dispatchers.Main) { isNetworkAvailable = true } }
         override fun onLost(network: Network) {
             viewModelScope.launch(Dispatchers.Main) {
                 if (connectivityManager.activeNetwork == null) {
                     isNetworkAvailable = false
                     if (isRecording) iniciarDetenerGrabacion()
-                    programarApagado(0)
+                    if (tiempoTemporizador > 0) programarApagado(0)
                 }
             }
         }
     }
 
     // --- ALMACENAMIENTO ---
-    private val folderMetadata = File(application.filesDir, "Grabaciones radio fides")
-    private val folderMusica: File = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "Radio Fides")
+    val folderGrabaciones = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "Radio Fides")
 
-    var tienePermisoAlmacenamiento by mutableStateOf(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+    var tienePermisoAlmacenamiento by mutableStateOf(
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            application.checkSelfPermission(android.Manifest.permission.READ_MEDIA_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else {
+            application.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+    )
         private set
 
     fun onStoragePermissionResult(granted: Boolean) {
         tienePermisoAlmacenamiento = granted
-        if (granted && !folderMusica.exists()) folderMusica.mkdirs()
+        if (granted && !folderGrabaciones.exists()) folderGrabaciones.mkdirs()
+        cargarPlaylist() 
     }
 
-    fun getAudioFile(timestamp: Long): File =
-        File(if (tienePermisoAlmacenamiento) folderMusica else folderMetadata, "audio_$timestamp.mp3")
-
-    fun getTxtFile(timestamp: Long): File =
-        File(folderMetadata, "grabación_$timestamp.txt")
+    fun getAudioFile(timestamp: Long): File {
+        return folderGrabaciones.listFiles()?.find { it.name.contains("_$timestamp") }
+            ?: File(folderGrabaciones, "temp_$timestamp.mp3")
+    }
 
     // --- PLAYLIST ---
     var playlist by mutableStateOf<List<SavedBookmark>>(emptyList())
@@ -121,13 +121,10 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         val customName: String,
         val title: String,
         val artist: String,
-        val imageUrl: String?,
         val timestamp: Long
     )
 
-    // --- AUTO PLAY SEGURO ---
     private var yaHizoAutoPlay = false
-
     fun autoPlay() {
         if (yaHizoAutoPlay) return
         if (!isPlaying && isNetworkAvailable) {
@@ -146,18 +143,13 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         controllerFuture.addListener({
             viewModelScope.launch(Dispatchers.Main) {
                 try {
-                    browser = controllerFuture.get()
+                    browser = withContext(Dispatchers.IO) { controllerFuture.get() }
                     browser?.addListener(object : Player.Listener {
                         override fun onIsPlayingChanged(playing: Boolean) {
                             isPlaying = playing
-                            if (!playing) {
-                                if (tiempoTemporizador > 0) programarApagado(0)
-                                if (isRecording) iniciarDetenerGrabacion()
-                            }
+                            if (!playing && tiempoTemporizador > 0) programarApagado(0)
                         }
-                        override fun onPlaybackStateChanged(state: Int) {
-                            isBuffering = (state == Player.STATE_BUFFERING)
-                        }
+                        override fun onPlaybackStateChanged(state: Int) { isBuffering = (state == Player.STATE_BUFFERING) }
                     })
                     fetchMetadata()
                     autoPlay()
@@ -167,7 +159,10 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
 
         startMetadataRefresh()
         startScheduleRefresh()
-        if (!folderMetadata.exists()) folderMetadata.mkdirs()
+        
+        if (tienePermisoAlmacenamiento || Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (!folderGrabaciones.exists()) folderGrabaciones.mkdirs()
+        }
         cargarPlaylist()
     }
 
@@ -193,8 +188,10 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     if (results != null && results.length() > 0) {
                         val current = results.getJSONObject(0)
                         withContext(Dispatchers.Main) {
-                            currentTitle = current.optString("track_title", "Radio Fides")
-                            currentArtist = current.optString("track_artist", "La voz que camina con el pueblo")
+                            val title = current.optString("track_title", getApplication<Application>().getString(R.string.app_name))
+                            val artist = current.optString("track_artist", getApplication<Application>().getString(R.string.eslogan))
+                            currentTitle = title
+                            currentArtist = artist
                             currentImageUrl = current.optString("track_image", "").ifEmpty { null }
                             
                             val mediaTitle = if (currentProgram.isMusical) currentTitle else currentProgram.name
@@ -226,10 +223,7 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun togglePlayPause() {
-        browser?.let { if (isPlaying) it.pause() else playStream() }
-    }
-
+    fun togglePlayPause() { browser?.let { if (isPlaying) it.pause() else playStream() } }
     fun pausarRadio() { browser?.pause() }
 
     private fun playStream() {
@@ -273,8 +267,7 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
     private fun startAudioRecording(timestamp: Long) {
         recordingJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                val carpetaDestino = if (tienePermisoAlmacenamiento) folderMusica else folderMetadata
-                val audioFile = File(carpetaDestino, "audio_$timestamp.mp3")
+                val audioFile = File(folderGrabaciones, "temp_$timestamp.mp3")
                 val url = URL(STREAM_URL)
                 val connection = url.openConnection() as HttpURLConnection
                 connection.connectTimeout = 10000
@@ -297,44 +290,88 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val timestamp = currentRecordingTimestamp
-                val nuevoMarcador = SavedBookmark(nombreElegido, currentTitle, currentArtist, currentImageUrl, timestamp)
-                val archivoTxt = getTxtFile(timestamp)
-                archivoTxt.writeText("${nuevoMarcador.customName}|${nuevoMarcador.title}|${nuevoMarcador.artist}|${nuevoMarcador.imageUrl}")
+                // [NUEVO] Separador seguro '---' en lugar de '|'
+                val safeName = nombreElegido.replace("-", " ").trim()
+                val safeProg = currentProgram.name.replace("-", " ").trim()
+                val finalName = "Fides---${safeName}---${safeProg}---_$timestamp.mp3"
+                
+                val tempFile = File(folderGrabaciones, "temp_$timestamp.mp3")
+                val finalFile = File(folderGrabaciones, finalName)
+                
+                if (tempFile.exists()) {
+                    tempFile.renameTo(finalFile)
+                    MediaScannerConnection.scanFile(getApplication(), arrayOf(finalFile.absolutePath), null, null)
+                }
+
                 withContext(Dispatchers.Main) {
-                    playlist = listOf(nuevoMarcador) + playlist
+                    cargarPlaylist()
                     showSaveDialog = false
                     nuevoNombreMarcador = ""
-                    isRecording = false
                     contadorNuevasGrabaciones++
                 }
             } catch (e: Exception) { }
         }
     }
 
+    /**
+     * [NUEVO] Sistema de recuperación híbrido: Carpeta + MediaStore
+     */
     private fun cargarPlaylist() {
         viewModelScope.launch(Dispatchers.IO) {
-            val listaTemporal = mutableListOf<SavedBookmark>()
-            if (folderMetadata.exists()) {
-                folderMetadata.listFiles()?.forEach { archivo ->
-                    if (archivo.name.endsWith(".txt") && archivo.name.startsWith("grabacion_")) {
-                        try {
-                            val datos = archivo.readText().split("|")
-                            if (datos.size >= 4) {
-                                val timestamp = archivo.name.removePrefix("grabacion_").removeSuffix(".txt").toLong()
-                                listaTemporal.add(SavedBookmark(datos[0], datos[1], datos[2], if (datos[3] == "null") null else datos[3], timestamp))
-                            }
-                        } catch (e: Exception) { }
+            val mapTemporal = mutableMapOf<Long, SavedBookmark>()
+            
+            // 1. Escaneo directo de la carpeta (Para archivos nuevos y Android 10)
+            if (folderGrabaciones.exists()) {
+                folderGrabaciones.listFiles()?.forEach { archivo ->
+                    parseFileName(archivo.name)?.let { bookmark -> mapTemporal[bookmark.timestamp] = bookmark }
+                }
+            }
+
+            // 2. Escaneo de MediaStore (Para archivos recuperados tras reinstalar)
+            val projection = arrayOf(MediaStore.Audio.Media.DISPLAY_NAME)
+            val selection = "${MediaStore.Audio.Media.DISPLAY_NAME} LIKE ?"
+            val selectionArgs = arrayOf("Fides---%")
+            
+            getApplication<Application>().contentResolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                projection, selection, selectionArgs, null
+            )?.use { cursor ->
+                val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
+                while (cursor.moveToNext()) {
+                    parseFileName(cursor.getString(nameColumn))?.let { bookmark ->
+                        if (!mapTemporal.containsKey(bookmark.timestamp)) {
+                            mapTemporal[bookmark.timestamp] = bookmark
+                        }
                     }
                 }
             }
-            withContext(Dispatchers.Main) { playlist = listaTemporal.sortedByDescending { it.timestamp } }
+
+            withContext(Dispatchers.Main) {
+                playlist = mapTemporal.values.sortedByDescending { it.timestamp }
+            }
         }
+    }
+
+    private fun parseFileName(fileName: String): SavedBookmark? {
+        if (!fileName.startsWith("Fides---") || !fileName.endsWith(".mp3")) return null
+        return try {
+            val parts = fileName.removeSuffix(".mp3").split("---")
+            if (parts.size >= 4) {
+                val name = parts[1]
+                val prog = parts[2]
+                val time = parts[3].removePrefix("_").toLong()
+                SavedBookmark(name, "Grabación", prog, time)
+            } else null
+        } catch (e: Exception) { null }
     }
 
     fun eliminarMarcador(marcador: SavedBookmark) {
         viewModelScope.launch(Dispatchers.IO) {
-            getTxtFile(marcador.timestamp).delete()
-            getAudioFile(marcador.timestamp).delete()
+            val file = getAudioFile(marcador.timestamp)
+            if (file.exists()) file.delete()
+            val selection = "${MediaStore.Audio.Media.DISPLAY_NAME} LIKE ?"
+            val selectionArgs = arrayOf("%${marcador.timestamp}.mp3")
+            getApplication<Application>().contentResolver.delete(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, selection, selectionArgs)
             withContext(Dispatchers.Main) { playlist = playlist.filter { it.timestamp != marcador.timestamp } }
         }
     }
