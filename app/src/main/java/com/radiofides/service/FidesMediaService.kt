@@ -1,5 +1,6 @@
 package com.radiofides.service
 
+import android.app.PendingIntent
 import android.content.Intent
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
@@ -9,6 +10,7 @@ import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.radiofides.MainActivity
 
 const val STREAM_URL = "https://usa7.fastcast4u.com/proxy/grflores?mp=/1"
 
@@ -16,11 +18,9 @@ const val STREAM_URL = "https://usa7.fastcast4u.com/proxy/grflores?mp=/1"
 class FidesMediaService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
-    private var exoPlayer: ExoPlayer? = null      // ← var + nullable en lugar de lateinit
-    private var player: ForwardingPlayer? = null  // ← más seguro para el ciclo de vida
+    private var exoPlayer: ExoPlayer? = null
+    private var player: ForwardingPlayer? = null
 
-    // Extraemos el MediaItem como función para no duplicar código
-    // y para que el ViewModel pueda actualizar la metadata sin recrearlo
     private fun buildMediaItem(): MediaItem {
         return exoPlayer?.currentMediaItem ?: MediaItem.Builder()
             .setUri(STREAM_URL)
@@ -46,9 +46,6 @@ class FidesMediaService : MediaSessionService() {
 
         val builtPlayer = object : ForwardingPlayer(builtExoPlayer) {
             override fun play() {
-                // Para radio en vivo siempre reconectamos al punto actual del stream.
-                // Reanudar desde donde pausaste no tiene sentido porque
-                // el stream ya avanzó en el tiempo.
                 builtExoPlayer.setMediaItem(buildMediaItem())
                 builtExoPlayer.seekToDefaultPosition()
                 builtExoPlayer.prepare()
@@ -56,15 +53,22 @@ class FidesMediaService : MediaSessionService() {
             }
         }
 
-        // Preparamos el stream por primera vez
         builtExoPlayer.setMediaItem(buildMediaItem())
         builtExoPlayer.prepare()
 
-        // Asignamos a las propiedades de clase una sola vez todo listo
         exoPlayer = builtExoPlayer
         player = builtPlayer
 
+        val intent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this, 
+            0, 
+            intent, 
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
         mediaSession = MediaSession.Builder(this, builtPlayer)
+            .setSessionActivity(pendingIntent)
             .setCallback(object : MediaSession.Callback {
                 override fun onConnect(
                     session: MediaSession,
@@ -93,6 +97,9 @@ class FidesMediaService : MediaSessionService() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
+        // [CORREGIDO] 
+        // Al activar 'exitEverything()', la radio SE APAGARÁ 
+        // y la notificación DESAPARECERÁ al deslizar la App para cerrarla.
         exitEverything()
         super.onTaskRemoved(rootIntent)
     }

@@ -15,6 +15,17 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="audio/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="audio/*" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -38,10 +49,14 @@
             </intent-filter>
         </activity>
 
+        <!-- [PERSONALIZADO]
+             android:label -> Nombre que aparece en la píldora superior.
+             android:icon -> El nuevo icono de silueta blanca para la barra de estado.
+        -->
         <service
             android:name=".service.FidesMediaService"
-            android:label="Radio Fides - En Vivo"
-            android:icon="@drawable/ic_radio"
+            android:label="@string/app_name"
+            android:icon="@drawable/ic_radio_fides_notif"
             android:foregroundServiceType="mediaPlayback"
             android:exported="false">
             <intent-filter>
