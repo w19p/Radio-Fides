@@ -8,26 +8,12 @@
         tools:ignore="ForegroundServicesPolicy" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
-    <!-- [OBLIGATORIO 2025] Para mostrar controles en Android 13+ -->
+    <!-- OBLIGATORIO 2025: Para mostrar controles en la barra de tareas en Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:mimeType="audio/*" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.SEND" />
-            <data android:mimeType="audio/*" />
-        </intent>
-    </queries>
+    <!-- Permisos para que las grabaciones sobrevivan en versiones antiguas -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
     <application
         android:allowBackup="true"
@@ -39,7 +25,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.RadioFides"
-        tools:targetApi="31"
         android:requestLegacyExternalStorage="true">
 
         <activity
@@ -55,6 +40,8 @@
 
         <service
             android:name=".service.FidesMediaService"
+            android:label="Radio Fides - En Vivo"
+            android:icon="@drawable/ic_radio"
             android:foregroundServiceType="mediaPlayback"
             android:exported="false">
             <intent-filter>

@@ -37,12 +37,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
-        }
-    }
-
     buildFeatures {
         compose = true
     }
@@ -60,17 +54,12 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     
     // [APRENDIZAJE] Esta línea es vital para usar iconos como Timer, Language y Notifications
-    implementation("androidx.compose.material:material-icons-extended")
-
-    implementation("androidx.navigation:navigation-compose:2.8.0")
-
-    val media3Version = "1.4.0"
-    implementation("androidx.media3:media3-exoplayer:$media3Version")
-    implementation("androidx.media3:media3-session:$media3Version")
-    implementation("androidx.media3:media3-ui:$media3Version")
-
-    implementation("io.coil-kt:coil-compose:2.6.0")
-
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.session)
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.coil.compose)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

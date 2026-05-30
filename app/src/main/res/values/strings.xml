@@ -1,10 +1,83 @@
 <resources>
+    <!-- Identidad de la App -->
     <string name="app_name">Radio Fides</string>
     <string name="top_bar_title">RADIO FIDES</string>
     <string name="eslogan">La voz que camina con el pueblo</string>
-    <string name="label_en_directo">EN DIRECTO</string>
-    <string name="action_reproducir">Reproducir</string>
-    <string name="action_pausar">Pausar</string>
-    <string name="action_compartir">Compartir la aplicación</string>
+
+    <!-- Etiquetas Generales -->
+    <string name="label_enlaces">ENLACES</string>
+    <string name="label_horarios">HORARIOS</string>
+    <string name="label_grabaciones">GRABACIONES</string>
+    <string name="label_en_directo">101.5 FM</string>
+    <string name="label_volver">Volver</string>
+    <string name="label_sintonizando">Sintonizando...</string>
+    <string name="label_abrir_con">Abrir con...</string>
+    <string name="label_compartir_via">Compartir audio vía...</string>
+    <string name="label_ahora">AHORA</string>
+    <string name="label_grabado_el">Guardado el: %1$s</string>
+
+    <!-- Días de la Semana -->
+    <string name="day_monday_friday">LUNES A VIERNES</string>
+    <string name="day_saturday">SÁBADO</string>
+    <string name="day_sunday">DOMINGO</string>
+
+    <!-- Controles de Reproducción -->
+    <string name="btn_grabar">GRABAR</string>
+    <string name="btn_grabando">GRABANDO</string>
+    <string name="btn_dormir">DORMIR</string>
+    <string name="btn_apagar">APAGAR</string>
+    <string name="btn_detener">DETENER</string>
+    <string name="btn_eliminar">Eliminar</string>
+    <string name="btn_guardar">Guardar</string>
+    <string name="btn_cancelar">Cancelar</string>
+
+    <!-- Diálogos -->
+    <string name="dialog_save_title">Guardar Noticia</string>
+    <string name="dialog_save_desc">Escribe un nombre para este marcador informativo:</string>
+    <string name="dialog_save_hint">Ej: Nombre del archivo</string>
+
+    <string name="dialog_delete_title">¿Eliminar grabación?</string>
+    <string name="dialog_delete_desc">Se eliminará \"%1$s\" de tu lista y del almacenamiento. Esta acción no se puede deshacer.</string>
+
+    <string name="dialog_sleep_title">Temporizador de Apagado</string>
+    <string name="dialog_sleep_desc">¿En cuánto tiempo quieres apagar la radio?</string>
+    <string name="btn_desactivar_timer">Desactivar Temporizador</string>
+
+    <!-- Pantallas -->
+    <string name="title_playlist">Mis Grabaciones</string>
+    <string name="title_grabaciones_fides">Grabaciones Radio Fides</string>
+    <string name="empty_playlist">No tienes grabaciones guardadas</string>
+    <string name="title_schedule">Programación: %1$s</string>
+    <string name="title_schedule_generic">Programación del Día</string>
+
+    <!-- Sin Internet -->
+    <string name="title_no_internet">Sin conexión a internet</string>
+    <string name="desc_no_internet">Parece que no tienes una conexión activa. Por favor, verifica tu Wi-Fi o datos móviles para seguir escuchando Radio Fides.</string>
+    <string name="label_waiting_connection">Esperando conexión...</string>
+
+    <!-- Errores -->
+    <string name="error_no_audio">El archivo de audio no existe</string>
+    <string name="error_no_player">No hay reproductor de audio instalado</string>
+    <string name="error_sharing">Error al intentar compartir</string>
+
+    <!-- Accesibilidad y Descripciones -->
+    <string name="desc_compartir">Compartir la aplicación</string>
     <string name="desc_logo_fides">Logo oficial de Radio Fides</string>
+    <string name="desc_portada">Portada</string>
+    <string name="desc_en_vivo">En vivo</string>
+    <string name="desc_reproducir_externo">Reproducir Externo</string>
+    <string name="desc_compartir_audio">Compartir Audio</string>
+    <string name="desc_sintonizar">Sintonizar</string>
+
+    <!-- Menú de Enlaces -->
+    <string name="menu_web">Página Oficial</string>
+    <string name="menu_clinica">Clínica Fides</string>
+    <string name="menu_facebook">Radio Fides Bolivia</string>
+    <string name="menu_instagram">radio fides bolivia</string>
+    <string name="menu_tiktok">radio fides bolivia oficial</string>
+    <string name="menu_twitter">Grupo Fides</string>
+    <string name="menu_youtube">Radio Fides de Bolivia</string>
+
+    <!-- Plantillas de compartir -->
+    <string name="share_template">¡Mira lo que escuché en Radio Fides!\nGrabación: %1$s\nTema: %2$s\nPrograma: %3$s</string>
 </resources>

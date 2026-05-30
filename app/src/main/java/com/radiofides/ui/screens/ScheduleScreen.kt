@@ -29,10 +29,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.radiofides.R
 import com.radiofides.data.ScheduleProvider
 import com.radiofides.viewmodel.FidesViewModel
 import java.util.Calendar
@@ -43,10 +45,11 @@ fun ScheduleScreen(viewModel: FidesViewModel, navController: NavController) {
     val calendar = Calendar.getInstance()
     val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
     
+    // [APRENDIZAJE] Cargamos el texto del día desde strings.xml
     val dayTitle = when (dayOfWeek) {
-        Calendar.SATURDAY -> "SÁBADO"
-        Calendar.SUNDAY -> "DOMINGO"
-        else -> "LUNES A VIERNES"
+        Calendar.SATURDAY -> stringResource(R.string.day_saturday)
+        Calendar.SUNDAY -> stringResource(R.string.day_sunday)
+        else -> stringResource(R.string.day_monday_friday)
     }
 
     val schedule = ScheduleProvider.getTodaySchedule()
@@ -55,10 +58,16 @@ fun ScheduleScreen(viewModel: FidesViewModel, navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Programación: $dayTitle", fontWeight = FontWeight.Bold) },
+                title = { 
+                    // [APRENDIZAJE] Usamos una plantilla con %s para insertar el nombre del día
+                    Text(stringResource(R.string.title_schedule, dayTitle), fontWeight = FontWeight.Bold) 
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack, 
+                            contentDescription = stringResource(R.string.label_volver)
+                        )
                     }
                 }
             )
@@ -72,7 +81,6 @@ fun ScheduleScreen(viewModel: FidesViewModel, navController: NavController) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(schedule) { program ->
-                // Comparamos si este es el programa que está al aire actualmente
                 val isNow = program.startTime == currentProgram.startTime && program.name == currentProgram.name
                 
                 Card(
@@ -81,7 +89,6 @@ fun ScheduleScreen(viewModel: FidesViewModel, navController: NavController) {
                     colors = CardDefaults.cardColors(
                         containerColor = if (isNow) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                     ),
-                    // [CORRECCIÓN] Usamos un BorderStroke real y válido para evitar el crash
                     border = if (isNow) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
                 ) {
                     Row(
@@ -112,11 +119,10 @@ fun ScheduleScreen(viewModel: FidesViewModel, navController: NavController) {
                             }
                         }
 
-                        // Icono indicador de "En Vivo"
                         if (isNow) {
                             Icon(
                                 imageVector = Icons.Default.PlayArrow,
-                                contentDescription = "En vivo",
+                                contentDescription = stringResource(R.string.desc_en_vivo),
                                 tint = Color.Red,
                                 modifier = Modifier.size(20.dp)
                             )

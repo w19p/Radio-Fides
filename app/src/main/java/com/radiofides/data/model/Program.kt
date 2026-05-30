@@ -1,7 +1,7 @@
 package com.radiofides.data.model
 
 /**
- * [APRENDIZAJE] Esta clase representa un bloque de la programación.
+ * Esta clase representa un bloque de la programación.
  * @param startTime Hora en formato "HH:mm" (ej: "05:45")
  * @param name Nombre del programa
  * @param conductor Nombre del locutor

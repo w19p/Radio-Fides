@@ -1,21 +1,11 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# [APRENDIZAJE] Reglas para Media3 y ExoPlayer
+# Estas reglas evitan que la radio falle en la Play Store cuando Google optimice el código.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+-keep class androidx.media3.common.** { *; }
+-keep class androidx.media3.exoplayer.** { *; }
+-keep class androidx.media3.session.** { *; }
+-keep class androidx.media3.ui.** { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Mantener clases de Hilt y Coil para que no haya errores de carga de imágenes o dependencias
+-keep class io.coilkt.** { *; }
+-keep class com.google.dagger.** { *; }

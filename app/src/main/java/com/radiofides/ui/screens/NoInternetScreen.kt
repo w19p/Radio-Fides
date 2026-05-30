@@ -21,11 +21,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.radiofides.R
 import com.radiofides.viewmodel.FidesViewModel
 
 @Composable
@@ -68,7 +70,7 @@ fun NoInternetScreen(navController: NavController, viewModel: FidesViewModel) {
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "Sin conexión a internet",
+                text = stringResource(R.string.title_no_internet),
                 style = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
@@ -79,7 +81,7 @@ fun NoInternetScreen(navController: NavController, viewModel: FidesViewModel) {
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Parece que no tienes una conexión activa. Por favor, verifica tu Wi-Fi o datos móviles para seguir escuchando Radio Fides.",
+                text = stringResource(R.string.desc_no_internet),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -97,7 +99,7 @@ fun NoInternetScreen(navController: NavController, viewModel: FidesViewModel) {
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Esperando conexión...",
+                text = stringResource(R.string.label_waiting_connection),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary
             )

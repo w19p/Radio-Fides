@@ -7,14 +7,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -59,7 +53,7 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
         startMessageAnimation = true
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(isNetworkAvailable) {
         delay(3500)
         if (isNetworkAvailable) {
             navController.navigate("home") {
@@ -95,7 +89,6 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
                             .background(
                                 Brush.linearGradient(
                                     colors = listOf(
-                                        //VerdeOscuro,
                                         VerdeMedio,
                                         VerdeClaro,
                                         VerdeMuyClaro
@@ -106,7 +99,7 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
                     ) {
                         Image(
                             painter = painterResource(id = R.drawable.logo2),
-                            contentDescription = "Logo Radio Fides",
+                            contentDescription = stringResource(R.string.desc_logo_fides),
                             modifier = Modifier.size(160.dp),
                             contentScale = ContentScale.Fit
                         )
@@ -123,7 +116,7 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "RADIO FIDES",
+                        text = stringResource(R.string.top_bar_title),
                         color = MaterialTheme.colorScheme.onBackground,
                         style = MaterialTheme.typography.headlineLarge.copy(
                             fontWeight = FontWeight.Black,
@@ -131,7 +124,7 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
                         )
                     )
                     Text(
-                        text = "La voz que camina con el pueblo",
+                        text = stringResource(R.string.eslogan),
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         style = MaterialTheme.typography.bodyLarge,
                         fontStyle = FontStyle.Italic
@@ -145,7 +138,7 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
                         strokeWidth = 3.dp
                     )
                     Text(
-                        text = "Sintonizando...",
+                        text = stringResource(R.string.label_sintonizando),
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         modifier = Modifier.padding(top = 10.dp),
                         style = MaterialTheme.typography.labelMedium

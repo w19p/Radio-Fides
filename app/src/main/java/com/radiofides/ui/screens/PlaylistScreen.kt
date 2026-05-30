@@ -1,5 +1,6 @@
 package com.radiofides.ui.screens
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.util.Log
 import android.widget.Toast
@@ -42,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,11 +51,12 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
+import com.radiofides.R
 import com.radiofides.viewmodel.FidesViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import android.content.ActivityNotFoundException
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaylistScreen(viewModel: FidesViewModel, navController: NavController) {
@@ -82,13 +85,13 @@ fun PlaylistScreen(viewModel: FidesViewModel, navController: NavController) {
             onDismissRequest = { marcadorAEliminar = null },
             title = {
                 Text(
-                    text = "¿Eliminar grabación?",
+                    text = stringResource(R.string.dialog_delete_title),
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
                 Text(
-                    text = "Se eliminará \"${marcador.customName}\" de tu lista y del almacenamiento. Esta acción no se puede deshacer."
+                    text = stringResource(R.string.dialog_delete_desc, marcador.customName)
                 )
             },
             confirmButton = {
@@ -101,12 +104,12 @@ fun PlaylistScreen(viewModel: FidesViewModel, navController: NavController) {
                         containerColor = Color.Red
                     )
                 ) {
-                    Text("Eliminar", color = Color.White)
+                    Text(stringResource(R.string.btn_eliminar), color = Color.White)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { marcadorAEliminar = null }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.btn_cancelar))
                 }
             }
         )
@@ -117,7 +120,7 @@ fun PlaylistScreen(viewModel: FidesViewModel, navController: NavController) {
             TopAppBar(
                 title = {
                     Text(
-                        "Grabaciones Radio Fides",
+                        stringResource(R.string.title_grabaciones_fides),
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -125,7 +128,7 @@ fun PlaylistScreen(viewModel: FidesViewModel, navController: NavController) {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
+                            contentDescription = stringResource(R.string.label_volver)
                         )
                     }
                 }
@@ -139,7 +142,7 @@ fun PlaylistScreen(viewModel: FidesViewModel, navController: NavController) {
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No tienes grabaciones guardadas", color = Color.Gray)
+                Text(stringResource(R.string.empty_playlist), color = Color.Gray)
             }
         } else {
             LazyColumn(
@@ -169,7 +172,7 @@ fun PlaylistScreen(viewModel: FidesViewModel, navController: NavController) {
                                 Locale.getDefault()
                             ).format(Date(marcador.timestamp))
                             Text(
-                                text = "Guardado el: $fecha",
+                                text = stringResource(R.string.label_grabado_el, fecha),
                                 fontSize = 10.sp,
                                 color = Color.Gray
                             )
@@ -197,37 +200,28 @@ fun PlaylistScreen(viewModel: FidesViewModel, navController: NavController) {
                                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                             }
                                             context.startActivity(
-                                                Intent.createChooser(playIntent, "Abrir con...")
+                                                Intent.createChooser(playIntent, context.getString(R.string.label_abrir_con))
                                             )
                                         } else {
                                             Toast.makeText(
                                                 context,
-                                                "El archivo de audio no existe",
+                                                context.getString(R.string.error_no_audio),
                                                 Toast.LENGTH_SHORT
                                             ).show()
                                         }
-                                    } catch (e: ActivityNotFoundException) {
-                                        // No hay ninguna app que pueda abrir audio
+                                    } catch (_: ActivityNotFoundException) {
                                         Toast.makeText(
                                             context,
-                                            "No hay reproductor de audio instalado",
+                                            context.getString(R.string.error_no_player),
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     } catch (e: Exception) {
-                                        Log.e(
-                                            "PlaylistScreen",
-                                            "Error reproductor: ${e.message} — ${e.javaClass.simpleName}"
-                                        )
-                                        Toast.makeText(
-                                            context,
-                                            "Error: ${e.javaClass.simpleName}",
-                                            Toast.LENGTH_LONG
-                                        ).show()
+                                        Log.e("PlaylistScreen", "Error: ${e.message}")
                                     }
                                 }) {
                                     Icon(
                                         Icons.Default.PlayArrow,
-                                        contentDescription = "Reproductor Externo",
+                                        contentDescription = stringResource(R.string.desc_reproducir_externo),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -252,7 +246,7 @@ fun PlaylistScreen(viewModel: FidesViewModel, navController: NavController) {
                                                     )
                                                     putExtra(
                                                         Intent.EXTRA_TEXT,
-                                                        "Grabación de Radio Fides: ${marcador.customName}"
+                                                        context.getString(R.string.share_template, marcador.customName, marcador.title, marcador.artist)
                                                     )
                                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -260,42 +254,38 @@ fun PlaylistScreen(viewModel: FidesViewModel, navController: NavController) {
                                             context.startActivity(
                                                 Intent.createChooser(
                                                     shareIntent,
-                                                    "Compartir audio vía..."
+                                                    context.getString(R.string.label_compartir_via)
                                                 )
                                             )
                                         } else {
                                             Toast.makeText(
                                                 context,
-                                                "El archivo de audio no existe",
+                                                context.getString(R.string.error_no_audio),
                                                 Toast.LENGTH_SHORT
                                             ).show()
                                         }
                                     } catch (e: Exception) {
-                                        Log.e(
-                                            "PlaylistScreen",
-                                            "Error compartir: ${e.message} — ${e.javaClass.simpleName}"
-                                        )
                                         Toast.makeText(
                                             context,
-                                            "Error: ${e.javaClass.simpleName}",
+                                            context.getString(R.string.error_sharing),
                                             Toast.LENGTH_LONG
                                         ).show()
                                     }
                                 }) {
                                     Icon(
                                         Icons.Default.Share,
-                                        contentDescription = "Compartir Audio",
+                                        contentDescription = stringResource(R.string.desc_compartir_audio),
                                         tint = MaterialTheme.colorScheme.secondary
                                     )
                                 }
 
-                                // BOTÓN ELIMINAR — solo abre el diálogo, no elimina directo
+                                // BOTÓN ELIMINAR
                                 IconButton(onClick = {
                                     marcadorAEliminar = marcador
                                 }) {
                                     Icon(
                                         Icons.Default.Delete,
-                                        contentDescription = "Eliminar",
+                                        contentDescription = stringResource(R.string.btn_eliminar),
                                         tint = Color.Red
                                     )
                                 }
