@@ -44,7 +44,7 @@
 
     <string name="dialog_sleep_title">Temporizador de Apagado</string>
     <string name="dialog_sleep_desc">¿En cuánto tiempo quieres apagar la radio?</string>
-    <string name="btn_desactivar_timer">Desactivar Temporizador</string>
+    <string name="btn_desactivar_timer">Cerrar Aplicación</string>
 
     <!-- Tiempos del Temporizador -->
     <string name="timer_15m">15m</string>
@@ -77,8 +77,8 @@
     <string name="menu_web">Página Oficial</string>
     <string name="menu_clinica">Clínica Fides</string>
     <string name="menu_facebook">Radio Fides Bolivia</string>
-    <string name="menu_instagram">radio fides bolivia</string>
-    <string name="menu_tiktok">radio fides bolivia oficial</string>
+    <string name="menu_instagram">Radio Fides Bolivia</string>
+    <string name="menu_tiktok">Radio Fides Bolivia Oficial</string>
     <string name="menu_twitter">Grupo Fides</string>
     <string name="menu_youtube">Radio Fides de Bolivia</string>
 

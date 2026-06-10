@@ -7,7 +7,14 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -26,10 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.radiofides.R
 import com.radiofides.ui.theme.VerdeClaro
@@ -98,7 +102,7 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.logo2),
+                            painter = painterResource(id = R.drawable.logo_de_bienvenida),
                             contentDescription = stringResource(R.string.desc_logo_fides),
                             modifier = Modifier.size(160.dp),
                             contentScale = ContentScale.Fit
@@ -115,7 +119,7 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
                         fadeIn(animationSpec = tween(1000))
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
+                    /*Text(
                         text = stringResource(R.string.top_bar_title),
                         color = MaterialTheme.colorScheme.onBackground,
                         style = MaterialTheme.typography.headlineLarge.copy(
@@ -128,7 +132,7 @@ fun WelcomeScreen(navController: NavController, viewModel: FidesViewModel) {
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         style = MaterialTheme.typography.bodyLarge,
                         fontStyle = FontStyle.Italic
-                    )
+                    )*/
 
                     Spacer(modifier = Modifier.height(60.dp))
 

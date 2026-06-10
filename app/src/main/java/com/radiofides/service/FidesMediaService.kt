@@ -13,7 +13,7 @@ import androidx.media3.session.MediaSessionService
 import com.radiofides.MainActivity
 import com.radiofides.R
 
-const val STREAM_URL = "https://usa7.fastcast4u.com/proxy/grflores?mp=/1"
+const val STREAM_URL = "https://usa13.fastcast4u.com/proxy/fideslapaz?mp=/1"
 
 @UnstableApi
 class FidesMediaService : MediaSessionService() {

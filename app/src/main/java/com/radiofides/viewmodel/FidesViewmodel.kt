@@ -47,7 +47,6 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         private const val METADATA_URL = "https://api.instant.audio/data/playlist/43/radio-fides"
-        private val BLACKLIST = listOf("Bilirrubina", "Bomba Estéreo")
     }
 
     private var browser: MediaController? = null
@@ -153,7 +152,7 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     })
                     fetchMetadata()
                     autoPlay()
-                } catch (e: Exception) { Log.e("FidesVM", "Error MediaController") }
+                } catch (_: Exception) { Log.e("FidesVM", "Error MediaController") }
             }
         }, MoreExecutors.directExecutor())
 
@@ -200,7 +199,7 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
                 }
-            } catch (e: Exception) { }
+            } catch (_: Exception) { }
         }
     }
 
@@ -282,7 +281,7 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
                 }
-            } catch (e: Exception) { withContext(Dispatchers.Main) { isRecording = false } }
+            } catch (_: Exception) { withContext(Dispatchers.Main) { isRecording = false } }
         }
     }
 
@@ -309,12 +308,12 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                     nuevoNombreMarcador = ""
                     contadorNuevasGrabaciones++
                 }
-            } catch (e: Exception) { }
+            } catch (_: Exception) { }
         }
     }
 
     /**
-     * [NUEVO] Sistema de recuperación híbrido: Carpeta + MediaStore
+     *  Sistema de recuperación híbrido: Carpeta + MediaStore
      */
     private fun cargarPlaylist() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -362,7 +361,7 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
                 val time = parts[3].removePrefix("_").toLong()
                 SavedBookmark(name, "Grabación", prog, time)
             } else null
-        } catch (e: Exception) { null }
+        } catch (_: Exception) { null }
     }
 
     fun eliminarMarcador(marcador: SavedBookmark) {
@@ -386,12 +385,12 @@ class FidesViewModel(application: Application) : AndroidViewModel(application) {
         try {
             val request = NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build()
             connectivityManager.registerNetworkCallback(request, networkCallback)
-        } catch (e: Exception) { }
+        } catch (_: Exception) { }
     }
 
     override fun onCleared() {
         super.onCleared()
-        try { connectivityManager.unregisterNetworkCallback(networkCallback) } catch (e: Exception) { }
+        try { connectivityManager.unregisterNetworkCallback(networkCallback) } catch (_: Exception) { }
         browser?.release()
     }
 }

@@ -1,5 +1,6 @@
 package com.radiofides.ui.screens
 
+import android.app.Activity
 import android.content.Intent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -41,7 +42,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -175,12 +175,11 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                                 try {
                                     val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                                     context.startActivity(intent)
-                                } catch (e: Exception) { }
+                                } catch (_: Exception) { }
                                 showSocialMenu = false
                             }
-                            DropdownMenuItem(text = { Text(stringResource(R.string.menu_web)) }, onClick = { openUrl("https://radiofides.com/es/") }, leadingIcon = { Image(painter = painterResource(id = R.drawable.logo_fides_oficial), contentDescription = null, modifier = Modifier.size(24.dp)) })
-                            DropdownMenuItem(text = { Text(stringResource(R.string.menu_clinica)) }, onClick = { openUrl("https://www.clinicafides.com/") }, leadingIcon = { Image(painter = painterResource(id = R.drawable.logo_clinca_fides), contentDescription = null, modifier = Modifier.size(24.dp)) })
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                            //HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                             DropdownMenuItem(text = { Text(stringResource(R.string.menu_facebook)) }, onClick = { openUrl("https://www.facebook.com/RadioFidesBolivia/") }, leadingIcon = { Image(painter = painterResource(id = R.drawable.iconfacebook), contentDescription = null, modifier = Modifier.size(22.dp)) })
                             DropdownMenuItem(text = { Text(stringResource(R.string.menu_instagram)) }, onClick = { openUrl("https://www.instagram.com/radiofidesbolivia/") }, leadingIcon = { Image(painter = painterResource(id = R.drawable.iconinstagram), contentDescription = null, modifier = Modifier.size(22.dp)) })
                             DropdownMenuItem(text = { Text(stringResource(R.string.menu_tiktok)) }, onClick = { openUrl("https://www.tiktok.com/@radiofidesboliviaoficial") }, leadingIcon = { Image(painter = painterResource(id = R.drawable.icontiktok), contentDescription = null, modifier = Modifier.size(22.dp)) })
@@ -235,8 +234,8 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                             )
                         )
                     ), contentAlignment = Alignment.Center) {
-                    Image(painter = painterResource(id = R.drawable.logo2), contentDescription = stringResource(R.string.desc_logo_fides), modifier = Modifier
-                        .size(200.dp)
+                    Image(painter = painterResource(id = R.drawable.logo_de_bienvenida), contentDescription = stringResource(R.string.desc_logo_fides), modifier = Modifier
+                        .size(700.dp)
                         .padding(16.dp))
                 }
             }
@@ -349,9 +348,23 @@ fun FidesHome(viewModel: FidesViewModel, navController: NavController) {
                             Button(onClick = { viewModel.programarApagado(30) }) { Text("30m") }
                             Button(onClick = { viewModel.programarApagado(60) }) { Text("60m") }
                         }
-                        TextButton(onClick = { viewModel.programarApagado(0) }, modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp)) { Text(stringResource(R.string.btn_desactivar_timer), color = Color.Red) }
+                        TextButton(
+                            onClick = {
+                                // 1. Limpiamos el temporizador
+                                viewModel.programarApagado(0)
+
+                                // 2. Apagamos la radio
+                                viewModel.pausarRadio()
+
+                                // 3. Cerramos la aplicación por completo (remueve de aplicaciones recientes)
+                                (context as? Activity)?.finishAndRemoveTask()
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp)
+                        ) {
+                            Text(stringResource(R.string.btn_desactivar_timer), color = Color.Red)
+                        }
                     }
                 }, confirmButton = {})
             }
